@@ -1,13 +1,11 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+import utils.preprocess as pre
+import json
 
-"""
-File: preprocess.py
-Author: Tim Rood
-Description: Main preprocessing python file. Preprocesses corpus and turns it into a directly (!) trainable, pickled dataset.
-"""
+# Load the JSON file
+with open('tiny-llm/PARAMS.json', 'r') as file:
+    config = json.load(file)
 
-# Import necessary libraries/modules
-import numpy as np
-
-print("Hello World Ouwe")
+# Run preprocessing
+path = 'tiny-llm/corpuses/shakespeare_short.txt'
+goal_path = 'tiny-llm/data/shakespeare_short.pkl'
+loaders = pre.prepare(config, path, goal_path)

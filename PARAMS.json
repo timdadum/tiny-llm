@@ -48,5 +48,16 @@
         "vocab_size": 1024,
         "max_token_length": 8,
         "special_tokens": ["[UNK]"]
+    },
+    "Train_Params": {
+        "batch_size": 128,
+        "epochs": 8,
+        "lr": 1e-4
+    },
+    "Baseline_Hyperparams": {
+        "embedding_dim": 32, 
+        "hidden_size": 64, 
+        "num_layers": 2, 
+        "output_size": 1
     }
 }
