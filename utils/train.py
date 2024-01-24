@@ -11,7 +11,7 @@ def load_data(pickle_name):
         raise ValueError("[train.load_data]: Path not found")
 
     with open(data_path, 'rb') as dat:
-        train_loader, test_loader = pk.load(dat)
+        train_loader, test_loader, encoding, decoding, tokenizer = pk.load(dat)
     return train_loader, test_loader
 
 def train(model, loader, epochs, optim, loss_function, device):
@@ -25,14 +25,14 @@ def train(model, loader, epochs, optim, loss_function, device):
             X, y = X.to(device), y.to(device)
             out = model(X)
 
-            loss = loss_function(out, y)
+            loss = loss_function(out, y.long())
             loss.backward()
             total_loss += loss.item()
             
             optim.step()
 
         avg_loss = total_loss / len(loader)
-        print(f"Epoch {epochs + 1}/{epochs} loss: {avg_loss:.4f}")
+        print(f"Epoch {epoch + 1}/{epochs} loss: {avg_loss:.4f}")
         
 
 def test(model, test_loader, loss_function, device):
@@ -43,14 +43,14 @@ def test(model, test_loader, loss_function, device):
             X, y = batch
             X, y = X.to(device), y.to(device)
 
-            outputs = model(X)
-            loss = loss_function(outputs, y)
+            out = model(X)
+            loss = loss_function(out, y.long())
             total_loss += loss.item()
 
     avg_loss = total_loss / len(test_loader)
     print(f"Test Loss: {avg_loss:.4f}")
 
-def run(model, train_loader, test_loader, epochs, lr, optim, loss_function, device):
+def run(model, train_loader, test_loader, epochs, optim, loss_function, device):
 
     model.to(device)
 
@@ -58,3 +58,4 @@ def run(model, train_loader, test_loader, epochs, lr, optim, loss_function, devi
     test(model, test_loader, loss_function, device)
 
     print("Finished!")
+

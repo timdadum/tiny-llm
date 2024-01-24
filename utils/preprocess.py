@@ -12,7 +12,7 @@ from torch.utils.data import Dataset, DataLoader
 
 print("Current Working Directory:", os.getcwd())
 
-# TOKENIZATION
+# TOKENIZATION AND ENCODING
 def get_byte_pair_encoding(corpus_path, bpe_params):
     tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
     trainer = BpeTrainer(**bpe_params)
@@ -20,26 +20,46 @@ def get_byte_pair_encoding(corpus_path, bpe_params):
     print(f'files: {files}')
     tokenizer.train(files, trainer)
     return tokenizer
-        
+
+def get_integer_encoding(tokens):
+    encoding = dict()
+    current = 0
+    for token in tokens:
+        if token not in encoding:
+            encoding[token] = current
+            current += 1
+    print(f"Resulting encoding: \n {encoding}")
+    return encoding     
+
+def get_integer_decoding(encoding):
+    return {value: key for key, value in encoding.items()}   
 
 # DATALOADER PREPARATION        
-def split(tokens, split=0.8):
+def split(encodings, split=0.8):
     """Splits tokenized corpus in train and test set"""
-    n = len(tokens)
+    n = len(encodings)
     split_index = round(n * split)
-    train = tokens[:split_index]
-    test = tokens[split_index:]
+    train = encodings[:split_index]
+    test = encodings[split_index:]
     return train, test
 
-def get_features_and_labels(tokens,
-                            sequence_length=64):
-    if len(tokens) < sequence_length:
-        raise ValueError(f"Tokenized iterable is not long enough. Please increase length to at least {sequence_length + 1} (current: {len(tokens)})")
+def get_features_and_labels(encodings, sequence_length=4):
+    if len(encodings) < sequence_length:
+        raise ValueError(f"Encoded iterable is not long enough. Please increase length to at least {sequence_length + 1} (current: {len(encodings)})")
     
-    features, labels = np.array([]), np.array([])
-    for i in range(len(tokens) - sequence_length - 1):
-        features = tokens[i : i + sequence_length]
-        labels = tokens[i + sequence_length + 1]
+    # Calculate the size of the dataset
+    num_samples = len(encodings) - sequence_length - 1
+
+    # Preallocate tensors for features and labels
+    features = torch.empty((num_samples, sequence_length), dtype=torch.float16)
+    labels = torch.empty(num_samples)
+
+    # Fill the tensors
+    for i in range(num_samples):
+        features[i] = torch.tensor(encodings[i : i + sequence_length])
+        labels[i] = torch.tensor(encodings[i + sequence_length + 1])
+    
+    print(f"Features size: {features.size()}\nLabels size: {labels.size()}")
     return features, labels
 
 def get_dataloaders(X_train, X_test, y_train, y_test, batch_size):
@@ -52,24 +72,30 @@ def prepare(config, corpus_path, goal_path):
     tokenizer = get_byte_pair_encoding(corpus_path, config['BPE_Params'])
     corpus = read_corpus(corpus_path)
     tokens = tokenizer.encode(corpus).tokens
-    print(type(tokens[0]))
+
+    # Create integer encodings
+    encoding = get_integer_encoding(tokens)
+    decoding = get_integer_decoding(encoding)
+    encodings = [encoding[token] for token in tokens]
+    print(f"Vocabulary size: {len(set(encodings))}")
+    print(f"Encodings: \n{encodings}")
 
     # Split
-    train_corpus, test_corpus = split(tokens, split=0.9)
+    train_corpus, test_corpus = split(encodings, split=0.9)
     X_train, y_train = get_features_and_labels(train_corpus)
     X_test, y_test = get_features_and_labels(test_corpus)
-    print(f"Train dimensions: {X_train}, {y_train}. Test dimensions: {X_test}, {y_test}")
+    print(f"Train dimensions: {X_train.size()}, {y_train.size()}. Test dimensions: {X_test.size()}, {y_test.size()}")
 
     # Create dataloaders
     batch_size = config['Train_Params']['batch_size']
-    print(f"Loaded batch size at {batch_size}")
     train_loader, test_loader = get_dataloaders(X_train, X_test, y_train, y_test, batch_size)
     loaders = (train_loader, test_loader)
 
     # Save data
-    save_data(loaders, goal_path)
+    data = (train_loader, test_loader, encoding, decoding, tokenizer)
+    save_data(data, goal_path)
 
-    return loaders
+    return data
 
 # Define Pytorch Dataset submodule
 class Corpus(Dataset):

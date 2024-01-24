@@ -6,6 +6,7 @@ with open('tiny-llm/PARAMS.json', 'r') as file:
     config = json.load(file)
 
 # Run preprocessing
-path = 'tiny-llm/corpuses/shakespeare_short.txt'
-goal_path = 'tiny-llm/data/shakespeare_short.pkl'
-loaders = pre.prepare(config, path, goal_path)
+corpus_path = 'tiny-llm/corpuses/debug.txt'
+goal_path = 'tiny-llm/data/debug.pkl'
+
+data = pre.prepare(config, corpus_path, goal_path)
