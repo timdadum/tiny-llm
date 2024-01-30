@@ -2,10 +2,12 @@ import numpy as np
 import os
 from collections import Counter
 from tokenizers import Tokenizer
+
+from tokenizers.pre_tokenizers import ByteLevel
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
 import json
-import pickle
+import pickle as pk
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -15,6 +17,7 @@ print("Current Working Directory:", os.getcwd())
 # TOKENIZATION AND ENCODING
 def get_byte_pair_encoding(corpus_path, bpe_params):
     tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
+    tokenizer.pre_tokenizer = ByteLevel()
     trainer = BpeTrainer(**bpe_params)
     files = [corpus_path]
     print(f'files: {files}')
@@ -43,7 +46,7 @@ def split(encodings, split=0.8):
     test = encodings[split_index:]
     return train, test
 
-def get_features_and_labels(encodings, sequence_length=4):
+def get_features_and_labels(encodings, sequence_length=16):
     if len(encodings) < sequence_length:
         raise ValueError(f"Encoded iterable is not long enough. Please increase length to at least {sequence_length + 1} (current: {len(encodings)})")
     
@@ -62,12 +65,7 @@ def get_features_and_labels(encodings, sequence_length=4):
     print(f"Features size: {features.size()}\nLabels size: {labels.size()}")
     return features, labels
 
-def get_dataloaders(X_train, X_test, y_train, y_test, batch_size):
-    train_corpus, test_corpus = Corpus(X_train, y_train), Corpus(X_test, y_test)
-    train_loader, test_loader = DataLoader(train_corpus, batch_size=batch_size, shuffle=False), DataLoader(test_corpus, batch_size=batch_size, shuffle=False)
-    return train_loader, test_loader
-
-def prepare(config, corpus_path, goal_path):
+def prepare(config, corpus_path, data_goal_path, tokenizer_goal_path):
     # Tokenize
     tokenizer = get_byte_pair_encoding(corpus_path, config['BPE_Params'])
     corpus = read_corpus(corpus_path)
@@ -87,13 +85,12 @@ def prepare(config, corpus_path, goal_path):
     print(f"Train dimensions: {X_train.size()}, {y_train.size()}. Test dimensions: {X_test.size()}, {y_test.size()}")
 
     # Create dataloaders
-    batch_size = config['Train_Params']['batch_size']
-    train_loader, test_loader = get_dataloaders(X_train, X_test, y_train, y_test, batch_size)
-    loaders = (train_loader, test_loader)
-
+    test_set = Corpus(X_test, y_test)
+    train_set = Corpus(X_train, y_train)
+    
     # Save data
-    data = (train_loader, test_loader, encoding, decoding, tokenizer)
-    save_data(data, goal_path)
+    data = (train_set, test_set, encoding, decoding, tokenizer)
+    save_data(data, data_goal_path, tokenizer_goal_path)
 
     return data
 
@@ -115,8 +112,18 @@ def read_corpus(path: str) -> str:
     with open(path, 'r', encoding='utf-8') as file:
         return file.read()
 
-def save_data(data: str, path: str):
-    with open(path, "wb") as file:
-        print(f"Now saving data at path {path}...")
-        pickle.dump(data, file)
+def save_data(data, data_goal_path: str, tokenizer_goal_path: str):
+    train_set, test_set, encoding, decoding, tokenizer = data
+
+    # Save tokenizer
+    tokenizer.save(tokenizer_goal_path)
+    print(f"Saved tokenizer at {tokenizer_goal_path}")
+
+    # Save data + encodings
+    with open(data_goal_path, "wb") as file:
+        print(f"Now saving data at path {data_goal_path}...")
+        print(type(data))
+        for item in data:
+            print(type(item))
+        pk.dump((train_set, test_set, encoding, decoding), file)
         print("Succesfully saved data.")
