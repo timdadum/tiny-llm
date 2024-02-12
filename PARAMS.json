@@ -1,63 +1,18 @@
 {
-    "LLM_Configuration": {
-        "model_name": "CustomLLM",
-        "model_version": "1.0",
-        "language": "English",
-        "vocab_size": 50000,
-        "num_layers": 12,
-        "hidden_size": 768,
-        "num_attention_heads": 12,
-        "max_sequence_length": 1024
-    },
-    "Training_Settings": {
-        "dataset_path": "/path/to/training/data",
-        "batch_size": 32,
-        "num_epochs": 10,
-        "learning_rate": 0.001,
-        "optimizer": "Adam",
-        "loss_function": "CrossEntropy",
-        "gradient_clipping": 1.0,
-        "use_gpu": true,
-        "gpu_id": 0
-    },
-    "Git_Configuration": {
-        "repository_url": "https://github.com/your-repository.git",
-        "branch": "main",
-        "commit_message": "Training update",
-        "auto_commit": true,
-        "commit_frequency": "AfterEachEpoch"
-    },
-    "Logging_and_Monitoring": {
-        "log_to_file": true,
-        "log_file_path": "/path/to/log/file",
-        "monitoring_tool": "TensorBoard",
-        "monitoring_frequency": "Every100Iterations"
-    },
-    "Validation_Settings": {
-        "validation_data_path": "/path/to/validation/data",
-        "validate_every_n_epochs": 1,
-        "validation_metrics": ["accuracy", "loss"]
-    },
-    "Model_Checkpointing": {
-        "checkpointing_enabled": true,
-        "checkpoint_path": "/path/to/checkpoints",
-        "save_frequency": "AfterEachEpoch",
-        "retain_last_n_checkpoints": 3
-    },
     "BPE_Params": {
-        "vocab_size": 1024,
+        "vocab_size": 256,
         "max_token_length": 8,
         "special_tokens": ["[UNK]"]
     },
     "Train_Params": {
-        "batch_size": 128,
-        "epochs": 8,
-        "lr": 1e-4
+        "epochs": 250,
+        "lr": 1e-4,
+        "batch_size": 128
     },
     "Baseline_Hyperparams": {
         "embedding_dim": 32, 
-        "hidden_size": 64, 
-        "num_layers": 2, 
-        "output_size": 1
+        "hidden_size": 256, 
+        "num_layers": 2,
+        "vocab_size": 249
     }
 }
