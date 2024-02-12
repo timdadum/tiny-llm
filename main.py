@@ -32,14 +32,14 @@ tokenizer = Tokenizer.from_file("tiny-llm/tokenizers/shakespeare_short.json")
 # Set device
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 
-# Train
+# Train or load earlier state
 model_name = 'shakespeare_short'
-# train.run(model, train_loader, test_loader, epochs, optim, loss_function, device, model_name)
-model.load_state_dict(torch.load('tiny-llm/trained_models/' + model_name))
+train.run(model, train_loader, test_loader, epochs, optim, loss_function, device, model_name)
+# model.load_state_dict(torch.load('tiny-llm/trained_models/' + model_name))
 model.eval()
 
 # Test results
-prompt = "King Arthur: Thou shall'nt be named by the higher orders..."
-result = model.sample(prompt, tokenizer, encoding, decoding, sequence_length=16, generation_length=500)
+prompt = "King Arthur: Thou shalln't be named by the higher orders..."
+result = model.sample(prompt, tokenizer, sequence_length=16, generation_length=500)
 
 print(result)

@@ -3,11 +3,13 @@ import os
 from collections import Counter
 from tokenizers import Tokenizer
 
-from tokenizers.pre_tokenizers import ByteLevel
+from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
 import json
 import pickle as pk
+
+from transformers import AutoTokenizer
 
 import torch
 from torch.utils.data import Dataset, DataLoader
@@ -15,13 +17,19 @@ from torch.utils.data import Dataset, DataLoader
 print("Current Working Directory:", os.getcwd())
 
 # TOKENIZATION AND ENCODING
-def get_byte_pair_encoding(corpus_path, bpe_params):
+def get_byte_pair_encoding(corpus_path, bpe_params, save=False, save_path=None):
     tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-    tokenizer.pre_tokenizer = ByteLevel()
+    tokenizer.pre_tokenizer = Whitespace()
     trainer = BpeTrainer(**bpe_params)
     files = [corpus_path]
-    print(f'files: {files}')
     tokenizer.train(files, trainer)
+    
+    if save:
+        if save_path is None:
+            raise ValueError("Please define the tokenizer save path")
+        else:
+            tokenizer.save(save_path)
+    
     return tokenizer
 
 def get_integer_encoding(tokens):
@@ -61,11 +69,9 @@ def get_features_and_labels(encodings, sequence_length=16):
     for i in range(num_samples):
         features[i] = torch.tensor(encodings[i : i + sequence_length])
         labels[i] = torch.tensor(encodings[i + sequence_length + 1])
-    
-    print(f"Features size: {features.size()}\nLabels size: {labels.size()}")
     return features, labels
 
-def prepare(config, corpus_path, data_goal_path, tokenizer_goal_path):
+def prepare(config, corpus_path, data_goal_path):
     # Tokenize
     tokenizer = get_byte_pair_encoding(corpus_path, config['BPE_Params'])
     corpus = read_corpus(corpus_path)
@@ -75,8 +81,6 @@ def prepare(config, corpus_path, data_goal_path, tokenizer_goal_path):
     encoding = get_integer_encoding(tokens)
     decoding = get_integer_decoding(encoding)
     encodings = [encoding[token] for token in tokens]
-    print(f"Vocabulary size: {len(set(encodings))}")
-    print(f"Encodings: \n{encodings}")
 
     # Split
     train_corpus, test_corpus = split(encodings, split=0.9)
@@ -90,7 +94,7 @@ def prepare(config, corpus_path, data_goal_path, tokenizer_goal_path):
     
     # Save data
     data = (train_set, test_set, encoding, decoding, tokenizer)
-    save_data(data, data_goal_path, tokenizer_goal_path)
+    save_data(data, data_goal_path)
 
     return data
 
@@ -112,12 +116,8 @@ def read_corpus(path: str) -> str:
     with open(path, 'r', encoding='utf-8') as file:
         return file.read()
 
-def save_data(data, data_goal_path: str, tokenizer_goal_path: str):
+def save_data(data, data_goal_path: str):
     train_set, test_set, encoding, decoding, tokenizer = data
-
-    # Save tokenizer
-    tokenizer.save(tokenizer_goal_path)
-    print(f"Saved tokenizer at {tokenizer_goal_path}")
 
     # Save data + encodings
     with open(data_goal_path, "wb") as file:

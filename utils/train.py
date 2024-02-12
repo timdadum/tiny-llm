@@ -45,12 +45,26 @@ def train_one_epoch(model, train_loader, optim, loss_function, device):
 
 def train(model, train_loader, test_loader, epochs, optim, loss_function, device):
     """Trains and tests the model for a given number of epochs."""
+    counter = 0
+    lowest_loss = float("inf")
     for epoch in range(epochs):
-        avg_loss = train_one_epoch(model, train_loader, optim, loss_function, device)
-        print(f'[TR] Epoch {epoch + 1}/{epochs} loss: {avg_loss:.4f}')
+        train_loss = train_one_epoch(model, train_loader, optim, loss_function, device)
+        print(f'[TR] Epoch {epoch + 1}/{epochs} loss: {train_loss:.4f}')
 
         test_loss = test(model, test_loader, loss_function, device)
         print(f'[TE] Test Loss: {test_loss:.4f}')
+
+        # Handle early stopping
+        if test_loss < lowest_loss:
+            counter = 0
+            lowest_loss = test_loss
+        else:
+            counter += 1
+
+        if counter > 10:
+            print(f"Early stopping after {epoch} epochs... Final loss is {lowest_loss}")
+        break
+    
 
 def test(model, test_loader, loss_function, device):
     """Tests the model."""

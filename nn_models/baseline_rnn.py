@@ -2,6 +2,7 @@ import torch.nn as nn
 import torch
 import utils.preprocess as pre
 import torch.nn.functional as F
+import utils.evaluate as ev
 
 class BaselineModel(nn.Module):
     def __init__(self, embedding_dim, vocab_size, hidden_size, num_layers):
@@ -26,27 +27,34 @@ class BaselineModel(nn.Module):
 
         return logits
     
-    def sample(self, prompt: str, tokenizer, encoding, decoding, sequence_length, generation_length, temperature: int=1.0):
-        last = prompt[-sequence_length:]
-        print(f'Last: {last}')
-        tokenized_prompt = tokenizer.encode(last).tokens
-        print(f"Tokenized prompt: {tokenized_prompt}")
-        encoded_prompt = torch.tensor([encoding[token] for token in tokenized_prompt])
-        print(f"Encoded prompt: {encoded_prompt}")
+    def sample(self, prompt: str, tokenizer, sequence_length, generation_length, temperature: int=1.0):
+        encoded_input = tokenizer.encode(prompt)
+        input_ids = encoded_input.ids
         
         # Start adding subwords to prompt
-        for i in range(generation_length):
-            X = encoded_prompt[-sequence_length:]
+        if len(input_ids) > sequence_length:
+            input_ids = input_ids[-sequence_length:]
+        elif len(input_ids) < sequence_length:
+            padding = torch.zeros((1, sequence_length - len(input_ids)), dtype=torch.long)
+            input_ids = torch.cat((padding, input_ids), dim=1)
 
-            # Forward pass
-            logits = self(X.unsqueeze(0))
-            softmaxed_logits = F.softmax(logits / temperature, dim=0)
-            sampled_class = torch.multinomial(softmaxed_logits.view(-1), 1)
-            sampled_token = decoding[sampled_class.item()]
-            
-            # Update prompt and input to model
-            prompt += sampled_token
-            X = torch.cat((X, sampled_class), dim=0)
+        # Initialie the tensor for generated IDs
+        generated_ids = torch.tensor(input_ids, dtype=torch.float32)
+        
+        print(generated_ids.shape)
 
-        return prompt
+        for _ in range(generation_length):
+            # Get output logits
+            logits = self(generated_ids.unsqueeze(0)).squeeze(0)
 
+            # Apply temperature scaling, sample from prediction
+            softmaxed_logits = F.softmax(logits / temperature, dim=-1)
+            sampled_token_id = torch.multinomial(softmaxed_logits, num_samples=1)
+            generated_ids = torch.cat((generated_ids, sampled_token_id))
+
+        print(generated_ids)
+
+        generated_text = tokenizer.decode(generated_ids.long().squeeze().tolist(), skip_special_tokens=True)
+        clean_text = ev.clean_bpe_output(generated_text)
+
+        return clean_text
