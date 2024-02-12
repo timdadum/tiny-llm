@@ -41,7 +41,8 @@ class BaselineModel(nn.Module):
             input_ids = torch.cat((padding, input_ids), dim=1)
 
         # Initialie the tensor for generated IDs
-        generated_ids = torch.tensor(input_ids, dtype=torch.float32)
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        generated_ids = torch.tensor(input_ids, dtype=torch.float32).to(device)
 
         for _ in range(generation_length):
             # Get output logits
