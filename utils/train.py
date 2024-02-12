@@ -63,7 +63,7 @@ def train(model, train_loader, test_loader, epochs, optim, loss_function, device
 
         if counter > 10:
             print(f"Early stopping after {epoch} epochs... Final loss is {lowest_loss}")
-        break
+            break
     
 
 def test(model, test_loader, loss_function, device):

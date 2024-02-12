@@ -31,6 +31,7 @@ tokenizer = Tokenizer.from_file("tiny-llm/tokenizers/shakespeare_short.json")
 
 # Set device
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+print(f'device is {device}')
 
 # Train or load earlier state
 model_name = 'shakespeare_short'
