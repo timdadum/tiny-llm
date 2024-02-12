@@ -16,6 +16,8 @@ class BaselineModel(nn.Module):
         self.linear = nn.Linear(self.h, vocab_size)
 
     def forward(self, x):
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        x = x.to(device)
         embed = self.embedding(torch.Tensor.long(x))
         
         # Initialize hidden and cell state with zeros: no information pertained at start of pass
@@ -40,8 +42,6 @@ class BaselineModel(nn.Module):
 
         # Initialie the tensor for generated IDs
         generated_ids = torch.tensor(input_ids, dtype=torch.float32)
-        
-        print(generated_ids.shape)
 
         for _ in range(generation_length):
             # Get output logits
@@ -51,8 +51,6 @@ class BaselineModel(nn.Module):
             softmaxed_logits = F.softmax(logits / temperature, dim=-1)
             sampled_token_id = torch.multinomial(softmaxed_logits, num_samples=1)
             generated_ids = torch.cat((generated_ids, sampled_token_id))
-
-        print(generated_ids)
 
         generated_text = tokenizer.decode(generated_ids.long().squeeze().tolist(), skip_special_tokens=True)
         clean_text = ev.clean_bpe_output(generated_text)
