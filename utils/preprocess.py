@@ -71,32 +71,6 @@ def get_features_and_labels(encodings, sequence_length=16):
         labels[i] = torch.tensor(encodings[i + sequence_length + 1])
     return features, labels
 
-def prepare(config, corpus_path, data_goal_path):
-    # Tokenize
-    tokenizer = get_byte_pair_encoding(corpus_path, config['BPE_Params'])
-    corpus = read_corpus(corpus_path)
-    tokens = tokenizer.encode(corpus).tokens
-
-    # Create integer encodings
-    encoding = get_integer_encoding(tokens)
-    decoding = get_integer_decoding(encoding)
-    encodings = [encoding[token] for token in tokens]
-
-    # Split
-    train_corpus, test_corpus = split(encodings, split=0.9)
-    X_train, y_train = get_features_and_labels(train_corpus)
-    X_test, y_test = get_features_and_labels(test_corpus)
-    print(f"Train dimensions: {X_train.size()}, {y_train.size()}. Test dimensions: {X_test.size()}, {y_test.size()}")
-
-    # Create dataloaders
-    test_set = Corpus(X_test, y_test)
-    train_set = Corpus(X_train, y_train)
-    
-    # Save data
-    data = (train_set, test_set, encoding, decoding, tokenizer)
-    save_data(data, data_goal_path)
-
-    return data
 
 # Define Pytorch Dataset submodule
 class Corpus(Dataset):
@@ -127,3 +101,31 @@ def save_data(data, data_goal_path: str):
             print(type(item))
         pk.dump((train_set, test_set, encoding, decoding), file)
         print("Succesfully saved data.")
+
+# MAIN PREPARATION FUNCTION
+def prepare(config, corpus_path, data_goal_path, tokenizer_goal_path):
+    # Tokenize
+    tokenizer = get_byte_pair_encoding(corpus_path, config['BPE_Params'], save=True, save_path=tokenizer_goal_path)
+    corpus = read_corpus(corpus_path)
+    tokens = tokenizer.encode(corpus).tokens
+
+    # Create integer encodings
+    encoding = get_integer_encoding(tokens)
+    decoding = get_integer_decoding(encoding)
+    encodings = [encoding[token] for token in tokens]
+
+    # Split
+    train_corpus, test_corpus = split(encodings, split=0.9)
+    X_train, y_train = get_features_and_labels(train_corpus)
+    X_test, y_test = get_features_and_labels(test_corpus)
+    print(f"Train dimensions: {X_train.size()}, {y_train.size()}. Test dimensions: {X_test.size()}, {y_test.size()}")
+
+    # Create dataloaders
+    test_set = Corpus(X_test, y_test)
+    train_set = Corpus(X_train, y_train)
+    
+    # Save data
+    data = (train_set, test_set, encoding, decoding, tokenizer)
+    save_data(data, data_goal_path)
+
+    return data
