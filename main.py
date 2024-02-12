@@ -24,10 +24,10 @@ optim = torch.optim.Adam(model.parameters(), train_params['lr'])
 loss_function = nn.CrossEntropyLoss()
 
 # Load data
-pickle_name = 'shakespeare_short.pkl'
+pickle_name = 'shakespeare.pkl'
 train_set, test_set, encoding, decoding = train.load_data(pickle_name)
 train_loader, test_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False), DataLoader(test_set, batch_size=batch_size, shuffle=False)
-tokenizer = Tokenizer.from_file("tiny-llm/tokenizers/shakespeare_short.json")
+tokenizer = Tokenizer.from_file("tiny-llm/tokenizers/shakespeare.json")
 
 # Set device
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
