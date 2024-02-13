@@ -1,8 +1,8 @@
 import torch.nn as nn
 import torch
-import utils.preprocess as pre
 import torch.nn.functional as F
 import utils.evaluate as ev
+from torch.cuda.amp import autocast, GradScaler
 
 class BaselineModel(nn.Module):
     def __init__(self, embedding_dim, vocab_size, hidden_size, num_layers):
@@ -16,18 +16,20 @@ class BaselineModel(nn.Module):
         self.linear = nn.Linear(self.h, vocab_size)
 
     def forward(self, x):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        x = x.to(device)
-        embed = self.embedding(torch.Tensor.long(x))
-        
-        # Initialize hidden and cell state with zeros: no information pertained at start of pass
-        h0 = torch.zeros(self.n, x.size(0), self.h).to(x.device)
-        c0 = torch.zeros(self.n, x.size(0), self.h).to(x.device)
+        # Autocast for automatic mixed precision training
+        with autocast():
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            x = x.to(device)
+            embed = self.embedding(torch.Tensor.long(x))
+            
+            # Initialize hidden and cell state with zeros: no information pertained at start of pass
+            h0 = torch.zeros(self.n, x.size(0), self.h).to(x.device)
+            c0 = torch.zeros(self.n, x.size(0), self.h).to(x.device)
 
-        out, _ = self.lstm(embed, (h0, c0))
-        logits = self.linear(out)[:, -1, :]
+            out, _ = self.lstm(embed, (h0, c0))
+            logits = self.linear(out)[:, -1, :]
 
-        return logits
+            return logits
     
     def sample(self, prompt: str, tokenizer, sequence_length, generation_length, temperature: int=1.0):
         encoded_input = tokenizer.encode(prompt)

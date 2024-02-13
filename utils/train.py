@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import os
 from tokenizers import Tokenizer
+from torch.cuda.amp import autocast, GradScaler
 
 def get_file_path(relative_path):
     """Generates absolute file path from a relative path."""
@@ -27,28 +28,37 @@ def to_device(data, device):
         return [to_device(x, device) for x in data]
     return data.to(device)
 
-def train_one_epoch(model, train_loader, optim, loss_function, device):
+def train_one_epoch(model, train_loader, optim, loss_function, device, scaler):
     """Trains the model for one epoch."""
     model.train()
     total_loss = 0
     for batch in train_loader:
+        # Calculate model output
         optim.zero_grad()
         X, y = to_device(batch, device)
         out = model(X)
 
-        loss = loss_function(out, y.long())
-        loss.backward()
+        loss = loss_function(out, y.long()) # Calculate loss
+
+        scaler.scale(loss).backward() # Scale loss with AMP and do backward pass
         total_loss += loss.item()
-        optim.step()
+        scaler.step(optim)  # Update model parameters
+        scaler.update()  # Prepare for the next iteration
+
     
     return total_loss / len(train_loader)
 
 def train(model, train_loader, test_loader, epochs, optim, loss_function, device):
     """Trains and tests the model for a given number of epochs."""
+    # Initialize counters for early stopping
     counter = 0
     lowest_loss = float("inf")
+    
+    # Initialize AMP scaler
+    scaler = GradScaler()
+    
     for epoch in range(epochs):
-        train_loss = train_one_epoch(model, train_loader, optim, loss_function, device)
+        train_loss = train_one_epoch(model, train_loader, optim, loss_function, device, scaler)
         print(f'[TR] Epoch {epoch + 1}/{epochs} loss: {train_loss:.4f}')
 
         test_loss = test(model, test_loader, loss_function, device)
