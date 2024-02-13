@@ -2,10 +2,9 @@ import json
 import utils.train as train
 import torch.nn as nn
 import torch
-import nn_models.baseline_rnn as baseline
+import model_classes.baseline_rnn as baseline
 from torch.utils.data import DataLoader
 from tokenizers import Tokenizer
-from tokenizers.models import BPE
 
 # Load the JSON file
 with open('tiny-llm/PARAMS.json', 'r') as file:
