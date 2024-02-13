@@ -11,7 +11,7 @@ class BaselineModel(nn.Module):
         self.h = hidden_size
         self.n = num_layers
 
-        self.lstm = nn.LSTM(embedding_dim, self.h, self.n, batch_first=True)
+        self.lstm = nn.LSTM(embedding_dim, self.h, self.n, batch_first=True, dropout=0.5)
 
         self.linear = nn.Linear(self.h, vocab_size)
 
