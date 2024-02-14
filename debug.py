@@ -1,6 +1,13 @@
 import pickle
-from tokenizers import Tokenizer
-from tokenizers.models import BPE
 
-tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
-tokenizer = tokenizer.from_file("tiny-llm/tokenizers/debug.json")
+with open("tiny-llm/data/shakespeare_short.pkl", "rb") as file:
+    data = pickle.load(file)
+
+train, test = data
+
+# Iterating over features and labels
+for feature, label in train:
+    # Do something with feature and label
+    print("Feature:", feature)
+    print("Label:", label)
+

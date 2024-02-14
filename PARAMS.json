@@ -5,14 +5,14 @@
         "special_tokens": ["[UNK]"]
     },
     "Train_Params": {
-        "epochs": 25,
-        "lr": 2.5e-4,
+        "epochs": 10,
+        "lr": 0.005,
         "batch_size": 128
     },
     "Baseline_Hyperparams": {
         "embedding_dim": 32, 
-        "hidden_size": 128, 
-        "num_layers": 3,
-        "vocab_size": 255
+        "hidden_size": 64, 
+        "num_layers": 2,
+        "vocab_size": 256
     }
 }

@@ -1,50 +1,37 @@
-import numpy as np
 import os
-from collections import Counter
 from tokenizers import Tokenizer
 
 from tokenizers.pre_tokenizers import Whitespace
 from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
-import json
 import pickle as pk
 
-from transformers import AutoTokenizer
-
 import torch
-from torch.utils.data import Dataset, DataLoader
-
-print("Current Working Directory:", os.getcwd())
+from torch.utils.data import Dataset
+import re
 
 # TOKENIZATION AND ENCODING
-def get_byte_pair_encoding(corpus_path, bpe_params, save=False, save_path=None):
-    tokenizer = Tokenizer(BPE(unk_token="[UNK]"))
+def create_tokenizer(corpus_path, tokenizer_name):
+    # Initialize a tokenizer with BPE model
+    tokenizer = Tokenizer(BPE(unk_token=None))
     tokenizer.pre_tokenizer = Whitespace()
-    trainer = BpeTrainer(**bpe_params)
+
+    # Initialize the trainer with your desired vocabulary size
+    trainer = BpeTrainer(vocab_size=256)
+
+    # List of files to train on
     files = [corpus_path]
+
+    # Train the tokenizer
     tokenizer.train(files, trainer)
-    
-    if save:
-        if save_path is None:
-            raise ValueError("Please define the tokenizer save path")
-        else:
-            tokenizer.save(save_path)
-    
+
+    # Saving the tokenizer
+    save_path = f'tiny-llm/tokenizers/{tokenizer_name}.json'
+    print(f"Save path: {save_path}")
+    tokenizer.save(save_path)
+    print(f"Succesfully saved tokenizer at {save_path}")
     return tokenizer
-
-def get_integer_encoding(tokens):
-    encoding = dict()
-    current = 0
-    for token in tokens:
-        if token not in encoding:
-            encoding[token] = current
-            current += 1
-    print(f"Resulting encoding: \n {encoding}")
-    return encoding     
-
-def get_integer_decoding(encoding):
-    return {value: key for key, value in encoding.items()}   
-
+    
 # DATALOADER PREPARATION        
 def split(encodings, split=0.8):
     """Splits tokenized corpus in train and test set"""
@@ -72,7 +59,7 @@ def get_features_and_labels(encodings, sequence_length=16):
     return features, labels
 
 
-# Define Pytorch Dataset submodule
+# Define Pytorch Dataset subclass
 class Corpus(Dataset):
     def __init__(self, features, labels):
         self.features = features
@@ -91,31 +78,61 @@ def read_corpus(path: str) -> str:
         return file.read()
 
 def save_data(data, data_goal_path: str):
-    train_set, test_set, encoding, decoding, tokenizer = data
-
-    # Save data + encodings
     with open(data_goal_path, "wb") as file:
         print(f"Now saving data at path {data_goal_path}...")
-        print(type(data))
-        for item in data:
-            print(type(item))
-        pk.dump((train_set, test_set, encoding, decoding), file)
+        pk.dump(data, file)
         print("Succesfully saved data.")
 
+
+# BPE PRE- AND POST-PROCESSING
+def bpe_preprocess(text, save=True):
+    """Adds special tokens for the model to learn. Overview of special tokens:
+    _ : Start of word
+    """
+    special_token_mapping = {' ': ' _'}
+
+    # First lowercase
+    text = text.lower()
+
+    # Then add special characters
+    for token, new_token in special_token_mapping.items():
+        text = text.replace(token, new_token)
+
+    if save:
+        clean_path = text.split(".")[0] + "_clean.txt"
+        with open(clean_path, "w", encoding='utf-8') as f:
+            f.write(text)
+
+    return text
+
+def bpe_postprocess(output):
+    """Removes special tokens and makes model output human readable again conform the conventions in preprocessing"""
+    post_process_mapping = {' ': '',
+                            '_': ' '}
+
+    # Interpret and remove special characters
+    for token, new_token in post_process_mapping.items():
+        output = output.replace(token, new_token)
+
+    # Re-capitalize corpus
+    def capitalize_after_period(text):
+        return re.sub(r"(?<=\.)(\w)", lambda match: match.group(1).upper(), text)
+    output = capitalize_after_period(output)
+    return output
+
+
 # MAIN PREPARATION FUNCTION
-def prepare(config, corpus_path, data_goal_path, tokenizer_goal_path):
-    # Tokenize
-    tokenizer = get_byte_pair_encoding(corpus_path, config['BPE_Params'], save=True, save_path=tokenizer_goal_path)
-    corpus = read_corpus(corpus_path)
-    tokens = tokenizer.encode(corpus).tokens
+def prepare(corpus_path, run_name, data_goal_path):
+    # Load and preprocess corpus
+    _ = bpe_preprocess(corpus_path)
 
-    # Create integer encodings
-    encoding = get_integer_encoding(tokens)
-    decoding = get_integer_decoding(encoding)
-    encodings = [encoding[token] for token in tokens]
+    # Fit tokenizer and tokenize corpus. Take ids as we'll use these for training.
+    tokenizer = create_tokenizer(corpus_path.split(".")[0] + "_clean.txt", run_name)
+    corpus = read_corpus(corpus_path.split(".")[0] + "_clean.txt")
+    encodings = tokenizer.encode(corpus).ids
 
-    # Split
-    train_corpus, test_corpus = split(encodings, split=0.9)
+    # Split training sequences
+    train_corpus, test_corpus = split(encodings, split=0.8)
     X_train, y_train = get_features_and_labels(train_corpus)
     X_test, y_test = get_features_and_labels(test_corpus)
     print(f"Train dimensions: {X_train.size()}, {y_train.size()}. Test dimensions: {X_test.size()}, {y_test.size()}")
@@ -125,7 +142,7 @@ def prepare(config, corpus_path, data_goal_path, tokenizer_goal_path):
     train_set = Corpus(X_train, y_train)
     
     # Save data
-    data = (train_set, test_set, encoding, decoding, tokenizer)
+    data = (train_set, test_set)
     save_data(data, data_goal_path)
 
     return data

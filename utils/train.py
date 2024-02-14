@@ -18,9 +18,9 @@ def load_data(pickle_name):
         raise FileNotFoundError(f'File not found at {data_path}')
 
     with open(data_path, 'rb') as dat:
-        train_set, test_set, encoding, decoding = pk.load(dat)
+        train_set, test_set = pk.load(dat)
         
-    return train_set, test_set, encoding, decoding
+    return train_set, test_set
 
 def to_device(data, device):
     """Move tensor(s) to chosen device"""

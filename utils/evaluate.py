@@ -1,10 +1,5 @@
 def clean_bpe_output(text):
-    # From GPT:
-    # Replace the BPE's word-start marker with a space
-    # Note: This might introduce extra spaces in some cases, which we'll trim later
-    text = text.replace(' ', '')
-    
-    # Additional common cleanup for BPE and similar tokenizations
+    # Common cleanup for BPE and similar tokenizations
     # This list can be extended based on specific characters you encounter
     replacements = {
         # Commonly seen in outputs, replace with appropriate character or remove
