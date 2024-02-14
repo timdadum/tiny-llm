@@ -85,7 +85,7 @@ def save_data(data, data_goal_path: str):
 
 
 # BPE PRE- AND POST-PROCESSING
-def bpe_preprocess(text, save=True):
+def bpe_preprocess(text, save=True, corpus_path=None):
     """Adds special tokens for the model to learn. Overview of special tokens:
     _ : Start of word
     """
@@ -99,9 +99,12 @@ def bpe_preprocess(text, save=True):
         text = text.replace(token, new_token)
 
     if save:
-        clean_path = text.split(".")[0] + "_clean.txt"
-        with open(clean_path, "w", encoding='utf-8') as f:
-            f.write(text)
+        if corpus_path is None:
+            raise ValueError("Please set save path for .bpe_process(save_path=...)")
+        else:
+            clean_path = corpus_path.split(".")[0] + "_clean.txt"
+            with open(clean_path, "w", encoding='utf-8') as f:
+                f.write(text)
 
     return text
 
@@ -124,7 +127,8 @@ def bpe_postprocess(output):
 # MAIN PREPARATION FUNCTION
 def prepare(corpus_path, run_name, data_goal_path):
     # Load and preprocess corpus
-    _ = bpe_preprocess(corpus_path)
+    corpus = read_corpus(corpus_path)
+    _ = bpe_preprocess(corpus, corpus_path=corpus_path)
 
     # Fit tokenizer and tokenize corpus. Take ids as we'll use these for training.
     tokenizer = create_tokenizer(corpus_path.split(".")[0] + "_clean.txt", run_name)
