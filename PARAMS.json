@@ -1,11 +1,11 @@
 {
     "BPE_Params": {
-        "vocab_size": 256,
+        "vocab_size": 70,
         "max_token_length": 8,
         "special_tokens": ["[UNK]"]
     },
     "Train_Params": {
-        "epochs": 10,
+        "epochs": 25,
         "lr": 0.005,
         "batch_size": 128
     },
@@ -13,6 +13,6 @@
         "embedding_dim": 32, 
         "hidden_size": 64, 
         "num_layers": 2,
-        "vocab_size": 256
+        "vocab_size": 70
     }
 }

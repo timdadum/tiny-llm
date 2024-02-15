@@ -7,8 +7,9 @@ with open('tiny-llm/PARAMS.json', 'r') as file:
 
 # Run preprocessing
 run_name = 'shakespeare'
+vocab_size = 70
 
 corpus_path = 'tiny-llm/corpuses/' + run_name + '.txt'
 data_goal_path = 'tiny-llm/data/' + run_name + '.pkl'
 
-data = pre.prepare(corpus_path, run_name, data_goal_path)
+data = pre.prepare(corpus_path, run_name, data_goal_path, vocab_size)

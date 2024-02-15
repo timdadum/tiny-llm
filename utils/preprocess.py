@@ -11,13 +11,13 @@ from torch.utils.data import Dataset
 import re
 
 # TOKENIZATION AND ENCODING
-def create_tokenizer(corpus_path, tokenizer_name):
+def create_tokenizer(corpus_path, tokenizer_name, vocab_size):
     # Initialize a tokenizer with BPE model
     tokenizer = Tokenizer(BPE(unk_token=None))
     tokenizer.pre_tokenizer = Whitespace()
 
     # Initialize the trainer with your desired vocabulary size
-    trainer = BpeTrainer(vocab_size=256)
+    trainer = BpeTrainer(vocab_size=vocab_size)
 
     # List of files to train on
     files = [corpus_path]
@@ -125,13 +125,13 @@ def bpe_postprocess(output):
 
 
 # MAIN PREPARATION FUNCTION
-def prepare(corpus_path, run_name, data_goal_path):
+def prepare(corpus_path, run_name, data_goal_path, vocab_size):
     # Load and preprocess corpus
     corpus = read_corpus(corpus_path)
     _ = bpe_preprocess(corpus, corpus_path=corpus_path)
 
     # Fit tokenizer and tokenize corpus. Take ids as we'll use these for training.
-    tokenizer = create_tokenizer(corpus_path.split(".")[0] + "_clean.txt", run_name)
+    tokenizer = create_tokenizer(corpus_path.split(".")[0] + "_clean.txt", run_name, vocab_size)
     corpus = read_corpus(corpus_path.split(".")[0] + "_clean.txt")
     encodings = tokenizer.encode(corpus).ids
 
