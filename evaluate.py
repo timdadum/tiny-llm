@@ -9,18 +9,18 @@ def load_model(model_class, name, params):
     model.eval()
     return model
 
-name = 'shakespeare_short'
+name = 'debug'
 params = {
     "embedding_dim": 32,
-    "vocab_size": 256,
+    "vocab_size": 128,
     "hidden_size": 64,
     "num_layers": 2
 }
 trained_model = load_model(baseline_rnn.BaselineModel, name, params).to('cpu')
 
 # Test results
-prompt = "King Arthur: Thou shalln't be named by the higher orders..."
-trained_model.set_tokenizer('shakespeare_short')
-result = trained_model.sample(prompt, sequence_length=16, generation_length=16)
+prompt = "THE SONNETS 1 From fairest creatures we desire increase, That thereby beautys rose might never die, But as the riper should by time decease, His tender heir might bear his memory:"
+trained_model.set_tokenizer('debug')
+result = trained_model.sample(prompt, sequence_length=16, generation_length=64)
 
 print(result)

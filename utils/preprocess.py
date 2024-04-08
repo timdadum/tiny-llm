@@ -125,7 +125,7 @@ def bpe_postprocess(output):
 
 
 # MAIN PREPARATION FUNCTION
-def prepare(corpus_path, run_name, data_goal_path, vocab_size):
+def prepare(corpus_path, run_name, data_goal_path, vocab_size, fraction=1.0):
     # Load and preprocess corpus
     corpus = read_corpus(corpus_path)
     _ = bpe_preprocess(corpus, corpus_path=corpus_path)
@@ -133,6 +133,11 @@ def prepare(corpus_path, run_name, data_goal_path, vocab_size):
     # Fit tokenizer and tokenize corpus. Take ids as we'll use these for training.
     tokenizer = create_tokenizer(corpus_path.split(".")[0] + "_clean.txt", run_name, vocab_size)
     corpus = read_corpus(corpus_path.split(".")[0] + "_clean.txt")
+    
+    # Take fraction of corpus
+    n = round(fraction * len(corpus))
+    print(f"Taking {n} characters out of total {len(corpus)}: {fraction*100}%")
+    corpus = corpus[:n]
     encodings = tokenizer.encode(corpus).ids
 
     # Split training sequences
