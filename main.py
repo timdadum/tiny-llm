@@ -22,7 +22,7 @@ optim = torch.optim.Adam(model.parameters(), train_params['lr'])
 loss_function = nn.CrossEntropyLoss()
 
 # Load data
-pickle_name = 'debug.pkl'
+pickle_name = 'shakespeare.pkl'
 train_set, test_set = train.load_data(pickle_name)
 train_loader, test_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False), DataLoader(test_set, batch_size=batch_size, shuffle=False)
 
@@ -31,6 +31,6 @@ device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 print(f'device is {device}')
 
 # Train or load earlier state
-model_name = 'debug'
+model_name = 'shakespeare'
 train.run(model, train_loader, test_loader, epochs, optim, loss_function, device, model_name)
 print("Finished!")
