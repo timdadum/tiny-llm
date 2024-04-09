@@ -7,10 +7,10 @@ with open('tiny-llm/PARAMS.json', 'r') as file:
 
 # Run preprocessing
 run_name = 'shakespeare'
-vocab_size = 128
-fraction = 0.35
+fraction = 0.1
 
-corpus_path = 'tiny-llm/corpuses/shakespeare_clean.txt'
-data_goal_path = 'tiny-llm/data/' + run_name + '.pkl'
+encoding_path = f'tiny-llm/encodings/' + run_name + '.json'
+corpus_path = f'tiny-llm/corpuses/' + run_name + '.txt'
+data_goal_path = f'tiny-llm/data/' + run_name + '.pkl'
 
-data = pre.prepare(corpus_path, run_name, data_goal_path, vocab_size, fraction)
+data = pre.prepare(corpus_path, encoding_path, data_goal_path, fraction)
