@@ -6,6 +6,7 @@ from tokenizers.models import BPE
 from tokenizers.trainers import BpeTrainer
 import pickle as pk
 import json
+from model_classes.gpt import GPTTokenizer
 
 import torch
 from torch.utils.data import Dataset
@@ -45,7 +46,7 @@ def split(encodings, split=0.8):
     test = encodings[split_index:]
     return train, test
 
-def get_features_and_labels(encodings, t=32):
+def get_features_and_labels(encodings, t=32, vocab_size=None):
     if len(encodings) < t:
         raise ValueError(f"Encoded iterable is not long enough. Please increase length to at least {t + 1} (current: {len(encodings)})")
     
@@ -54,12 +55,13 @@ def get_features_and_labels(encodings, t=32):
 
     # Preallocate tensors for features and labels
     features = torch.empty((num_samples, t), dtype=torch.float16)
-    labels = torch.empty(num_samples)
+    labels = torch.empty((num_samples, t), dtype=torch.long)
 
     # Fill the tensors
     for i in range(num_samples):
         features[i] = torch.tensor(encodings[i : i + t])
-        labels[i] = torch.tensor(encodings[i + t + 1])
+        labels[i] = torch.tensor(encodings[i + 1 : i + 1 + t], dtype=torch.long)
+
     return features, labels
 
 
@@ -86,32 +88,6 @@ def save_data(data, data_goal_path: str):
         print(f"Now saving data at path {data_goal_path}...")
         pk.dump(data, file)
         print("Succesfully saved data.")
-
-def save_encoding(data, path: str):
-    with open(path, 'w') as file:
-        json.dump(data, file)
-
-# WORD-ENCODING PRE-PROCESSING
-def word_encoding(text, thresh=1e-5):
-    """Encodes a text using an integer encoding and word-level tokenization"""
-    # Split text
-    tokens = np.array(text.split())
-
-    # Mask rare words using '[UNK]'
-    unique, counts = np.unique(tokens, return_counts=True)
-    threshold = np.round(thresh*len(tokens))
-    rare_tokens = unique[counts < threshold]
-    print(f"Threshold is {threshold} occurences. Percentage of rare tokens: {(len(rare_tokens)/len(unique))*100}%")
-    tokens = np.where(np.isin(tokens, rare_tokens), '<UNK>', tokens)
-        
-    # Apply integer encoding
-    unique = np.unique(tokens)
-    print(f"This threshold would lead to a vocabulary of {len(unique)}")
-    mapping = {token: i for i, token in enumerate(unique)}
-    print(mapping)
-    vectorized_map = np.vectorize(lambda x: mapping.get(x,x))
-    y = vectorized_map(tokens)
-    return (y, mapping)
 
 '''
 # BPE PRE- AND POST-PROCESSING
@@ -155,23 +131,25 @@ def bpe_postprocess(output):
 '''
 
 # MAIN PREPARATION FUNCTION
-def prepare(corpus_path, encoding_path, data_goal_path, fraction=1.0):
+def prepare(corpus_path, tokenizer_path, data_goal_path, unk_threshold=1e-4, fraction=1.0):
     # Load and preprocess corpus
     corpus = read_corpus(corpus_path)
-    encodings, mapping = word_encoding(corpus)
-    save_encoding(mapping, encoding_path)
-
-    # Take fraction of corpus
+    
+     # Take fraction of corpus
     n = round(fraction * len(corpus))
-    print(f"Taking {n} characters out of total {len(encodings)}: {fraction*100}%")
-    encodings = encodings[:n]
+    print(f"Taking {n} characters out of total {len(corpus)}: {fraction*100}%")
+    corpus = corpus[:n]
 
-    print(encodings)
+    # Fit a tokenizer, save it too
+    tokenizer = GPTTokenizer()
+    tokens = tokenizer.fit(corpus, unk_threshold=unk_threshold, encode=True)
+    tokenizer.save(tokenizer_path)
+    vocab_size = tokenizer.vocab_size
     
     # Split training sequences
-    train_corpus, test_corpus = split(encodings, split=0.8)
-    X_train, y_train = get_features_and_labels(train_corpus)
-    X_test, y_test = get_features_and_labels(test_corpus)
+    train_corpus, test_corpus = split(tokens, split=0.8)
+    X_train, y_train = get_features_and_labels(train_corpus, vocab_size=vocab_size)
+    X_test, y_test = get_features_and_labels(test_corpus, vocab_size=vocab_size)
     print(f"Train dimensions: {X_train.size()}, {y_train.size()}. Test dimensions: {X_test.size()}, {y_test.size()}")
 
     # Create dataloaders

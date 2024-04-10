@@ -5,14 +5,19 @@
         "special_tokens": ["[UNK]"]
     },
     "Train_Params": {
-        "epochs": 100,
+        "epochs": 10,
         "lr": 0.001,
         "batch_size": 128
     },
-    "Baseline_Hyperparams": {
-        "embedding_dim": 64, 
-        "hidden_size": 128, 
-        "num_layers": 2,
-        "vocab_size": 128
+    "Hyperparameters": {
+        "k": 8, 
+        "blocks": 1,
+        "heads": 1
+    },
+    "Files": {
+        "tokenizer": "tiny-llm/tokenizers/brown.json",
+        "corpus": "tiny-llm/corpuses/brown.txt",
+        "data": "tiny-llm/data/brown.pkl",
+        "model": "tiny-llm/trained_models/brown"
     }
 }

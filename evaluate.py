@@ -1,26 +1,23 @@
 import torch
-from model_classes import baseline_rnn
+from model_classes import gpt
+import json
 
-def load_model(model_class, name, params):
-    model_path = f'tiny-llm/trained_models/{name}'
-    
-    model = model_class(**params)
-    model.load_state_dict(torch.load(model_path, map_location='cpu'))
+with open('tiny-llm/PARAMS.json', 'r') as file:
+    config = json.load(file)
+
+def load_model(model_class, config):
+    model = model_class(**config['Hyperparameters'])
+    tokenizer = gpt.GPTTokenizer()
+    tokenizer.from_file(config['Files']['tokenizer'])
+    model.set_tokenizer(tokenizer)
+    model.load_state_dict(torch.load(config['Files']['model'], map_location='cpu'))
     model.eval()
     return model
 
-name = 'debug'
-params = {
-    "embedding_dim": 64,
-    "vocab_size": 128,
-    "hidden_size": 128,
-    "num_layers": 2
-}
-trained_model = load_model(baseline_rnn.BaselineModel, name, params).to('cpu')
+trained_model = load_model(gpt.GPT, config).to('cpu')
 
 # Test results
-prompt = "THE SONNETS 1 From fairest creatures we desire increase, That thereby beautys rose might never die, But as the riper should by time decease, His tender heir might bear his memory:"
-trained_model.set_tokenizer('shakespeare')
-result = trained_model.sample(prompt, sequence_length=16, generation_length=64)
+prompt = "The American soliders that have landed in the far west have seldom been more isolated. Their opponents try to seize the eastern land but have not yet succeeded in doing so...."
+result = trained_model.sample(prompt)
 
-print(result)
+print(f'result is {result}')

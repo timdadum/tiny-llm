@@ -1,9 +1,8 @@
 import pickle as pk
 import torch
-import torch.nn as nn
 import os
-from tokenizers import Tokenizer
 from torch.cuda.amp import autocast, GradScaler
+import torch.nn.functional as F
 
 def get_file_path(relative_path):
     """Generates absolute file path from a relative path."""
@@ -28,6 +27,13 @@ def to_device(data, device):
         return [to_device(x, device) for x in data]
     return data.to(device)
 
+def to_one_hot_label(y, v):
+    """Utility function to turn integer label to one-hot label. Is done at inference time to extremely reduce saved data size"""
+    # Encode integer encoding. Turn back to float16
+    y_one_hot = F.one_hot(y.long(), num_classes=v).to(torch.float16)
+
+    return y_one_hot
+
 def train_one_epoch(model, train_loader, optim, loss_function, device, scaler):
     """Trains the model for one epoch."""
     model.train()
@@ -38,14 +44,18 @@ def train_one_epoch(model, train_loader, optim, loss_function, device, scaler):
         X, y = to_device(batch, device)
         out = model(X)
 
-        loss = loss_function(out, y.long()) # Calculate loss
+        y = to_one_hot_label(y, model.tokenizer.vocab_size)
+
+        loss = loss_function(out, y) # Calculate loss
 
         scaler.scale(loss).backward() # Scale loss with AMP and do backward pass
         total_loss += loss.item()
         scaler.step(optim)  # Update model parameters
         scaler.update()  # Prepare for the next iteration
 
-    
+        # Delete loaded data for this batch as datapoints are quite large
+        del X, y
+
     return total_loss / len(train_loader)
 
 def train(model, train_loader, test_loader, epochs, optim, loss_function, device):
@@ -83,8 +93,9 @@ def test(model, test_loader, loss_function, device):
     with torch.no_grad():
         for batch in test_loader:
             X, y = to_device(batch, device)
+            y = to_one_hot_label(y, model.tokenizer.vocab_size)
             out = model(X)
-            loss = loss_function(out, y.long())
+            loss = loss_function(out, y)
             total_loss += loss.item()
 
     return total_loss / len(test_loader)
