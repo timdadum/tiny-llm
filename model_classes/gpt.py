@@ -197,7 +197,7 @@ class GPT(nn.Module):
         if self.embed is None or self.unembed is None:
             raise ValueError('Embeddings are not set. Did you set a tokenizer yet?')
 
-        x = self.embed(x)
+        x = self.embed(x.long())
         _, t, _ = x.size()
 
         # Add positional encoding

@@ -9,14 +9,14 @@ def get_file_path(relative_path):
     current_dir = os.path.dirname(__file__)
     return os.path.join(current_dir, relative_path)
 
-def load_data(pickle_name):
+def load_training_data(config):
     """Loads training and testing data from a pickle file."""
-    data_path = get_file_path(f'../data/{pickle_name}')
+    path = config['Files']['data']
 
-    if not os.path.isfile(data_path):
-        raise FileNotFoundError(f'File not found at {data_path}')
+    if not os.path.isfile(path):
+        raise FileNotFoundError(f'File not found at {path}')
 
-    with open(data_path, 'rb') as dat:
+    with open(path, 'rb') as dat:
         train_set, test_set = pk.load(dat)
         
     return train_set, test_set
@@ -58,7 +58,7 @@ def train_one_epoch(model, train_loader, optim, loss_function, device, scaler):
 
     return total_loss / len(train_loader)
 
-def train(model, train_loader, test_loader, epochs, optim, loss_function, device):
+def train(model, train_loader, test_loader, config, optim, loss_function, device):
     """Trains and tests the model for a given number of epochs."""
     # Initialize counters for early stopping
     counter = 0
@@ -66,7 +66,8 @@ def train(model, train_loader, test_loader, epochs, optim, loss_function, device
     
     # Initialize AMP scaler
     scaler = GradScaler()
-    
+    epochs = config['Train_Params']['epochs']
+
     for epoch in range(epochs):
         train_loss = train_one_epoch(model, train_loader, optim, loss_function, device, scaler)
         print(f'[TR] Epoch {epoch + 1}/{epochs} loss: {train_loss:.4f}')
@@ -100,10 +101,10 @@ def test(model, test_loader, loss_function, device):
 
     return total_loss / len(test_loader)
 
-def run(model, train_loader, test_loader, epochs, optim, loss_function, device, model_name=None):
+def run(model, train_loader, test_loader, config, optim, loss_function, device, model_name=None):
     """Runs the training and testing process, and saves the model if requested."""
     model.to(device)
-    train(model, train_loader, test_loader, epochs, optim, loss_function, device)
+    train(model, train_loader, test_loader, config, optim, loss_function, device)
 
     print('Finished!')
 

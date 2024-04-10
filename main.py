@@ -24,8 +24,8 @@ optim = torch.optim.Adam(model.parameters(), train_params['lr'])
 loss_function = nn.CrossEntropyLoss()
 
 # Load data
-train_set, test_set = train.load_data(config['Files']['data'])
-train_loader, test_loader = DataLoader(train_set, batch_size=batch_size, shuffle=False), DataLoader(test_set, batch_size=batch_size, shuffle=False)
+train_set, test_set = train.load_training_data(config)
+train_loader, test_loader = DataLoader(train_set, batch_size=train_params['batch_size'], shuffle=False), DataLoader(test_set, batch_size=train_params['batch_size'], shuffle=False)
 
 # Set device
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -33,5 +33,5 @@ print(f'Training device is {device}')
 
 # Train or load earlier state
 model_name = 'brown'
-train.run(model, train_loader, test_loader, epochs, optim, loss_function, device, model_name)
+train.run(model, train_loader, test_loader, config, optim, loss_function, device, model_name)
 print("Finished!")
