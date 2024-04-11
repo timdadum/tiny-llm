@@ -24,6 +24,8 @@ optim = torch.optim.Adam(model.parameters(), train_params['lr'])
 loss_function = nn.CrossEntropyLoss()
 
 # Load data
+
+
 train_set, test_set = train.load_training_data(config)
 train_loader, test_loader = DataLoader(train_set, batch_size=train_params['batch_size'], shuffle=False), DataLoader(test_set, batch_size=train_params['batch_size'], shuffle=False)
 

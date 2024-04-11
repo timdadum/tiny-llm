@@ -5,6 +5,7 @@ import torch
 import unittest
 import torch.testing as torch_testing
 import json
+import re
 
 # NO DROPOUT AND SKIP-CONNECTIONS YET!
 
@@ -124,19 +125,26 @@ class SinusoidalPositionalEncoding(nn.Module):
 
 class GPTTokenizer:
     def __init__(self):
-        self.mapping = None
+        self.encoding = None
+        self.decoding = None
         self.vocab_size = None
 
     def from_file(self, path):
         """Load tokenizer encoding from a .json file."""
         with open(path, 'r') as file:
-            self.mapping = json.load(file)
-            self.vocab_size = len(self.mapping)
-        print("Tokenizer encoding loaded from file!")
+            self.encoding = json.load(file)
+            self.decoding = {j: i for i, j in self.encoding.items()}
+            self.vocab_size = len(self.encoding)
+        print(self.encoding)
+
+    def tokenize(self, text):
+        text = text.lower()
+        tokens = np.array(re.findall(r"\b\w+'\w+|\w+|[^\w\s]", text))
+        return tokens
 
     def fit(self, corpus, unk_threshold=1e-4, encode=False):
         """Determine the encoding from the corpus."""
-        tokens = np.array(corpus.split())
+        tokens = self.tokenize(corpus)
         unique, counts = np.unique(tokens, return_counts=True)
         threshold = np.round(unk_threshold * len(tokens))
         rare_tokens = unique[counts < threshold]
@@ -144,37 +152,44 @@ class GPTTokenizer:
         # Mask rare words as '<UNK>'
         tokens = np.where(np.isin(tokens, rare_tokens), '<UNK>', tokens)
         unique = np.unique(tokens)
-        self.vocab_size = len(unique)
         
-        # Create mapping
-        self.mapping = {token: i for i, token in enumerate(unique)}
-        print(f"Tokenizer fit with vocab size {len(self.mapping)}")
+        # Create mapping with '<UNK>' as a special case
+        mapping = {token: i for i, token in enumerate(unique, start=1)}  # Start indexing from 1
+        mapping['<UNK>'] = 0  # Assign 0 to '<UNK>'
 
+        # Round up vocabulary
+        vocab_size = len(mapping)
+        self.encoding = mapping
+        self.decoding = {j: i for i, j in mapping.items()}
+        self.vocab_size = vocab_size
+        print(f"Tokenizer fit with vocab size {len(self.encoding)}")
+
+        # Encode after fitting if required
         if encode:
             tokens = self.encode(corpus)
             return tokens
 
     def encode(self, text):
-        """Encode a text using the tokenizer's mapping."""
-        if self.mapping is None:
+        """Encode a text using the tokenizer's encoding."""
+        if self.encoding is None:
             raise ValueError("Encoding has not been set. Please load an encoding or fit the tokenizer.")
         
-        tokens = np.array(text.split())
-        vectorized_map = np.vectorize(lambda x: self.mapping.get(x, self.mapping.get('<UNK>', -1)))
-        encoded_text = vectorized_map(tokens)
+        tokens = self.tokenize(text)
+        encoded_text = [self.encoding[token] for token in tokens]
         encoded_tensor = torch.tensor(encoded_text, dtype=torch.long)
         return encoded_tensor
 
     def decode(self, tokens):
-        # Assuming self.mapping is {token_id: token_str}
-        decoded_tokens = [self.mapping.get(token, '<UNK>') for token in tokens]
+        print(f"Shape: {tokens.size()}")
+        print(f"Decoding... Tokens: {tokens}")
+        decoded_tokens = [self.decoding[int(token)] for token in tokens]
         decoded_text = ' '.join(decoded_tokens)
         return decoded_text
     
     def save(self, path):
         """Saves tokenizer (or rather - its mapping which characterizes the tokenizer) to provided path"""
         with open(path, 'w') as file:
-            json.dump(self.mapping, file)
+            json.dump(self.encoding, file)
         f"""Tokenizer succesfully saved at {path}"""
 
 class GPT(nn.Module):
@@ -199,24 +214,29 @@ class GPT(nn.Module):
         self.tokenizer = None
 
     def check_device_of_components(self):
-        # Iterate through each attribute of the model
+        # Using named_modules to capture all modules in the hierarchy
+        for name, module in self.named_modules():
+            # Attempt to get a parameter to infer device. If no parameters, skip.
+            try:
+                param = next(module.parameters())
+                print(f"{name} is on {param.device}")
+            except StopIteration:
+                # This module has no parameters
+                if name:  # Skip printing for the top-level module which has name ''
+                    print(f"{name} has no parameters")
+
+        # Check for tensors directly attached to this module (e.g., custom buffers not registered as buffers)
         for name, attr in self.__dict__.items():
-            if hasattr(attr, 'device'):
-                print(f"{name} is on {attr.device}")
-            elif isinstance(attr, nn.ModuleList) or isinstance(attr, list):
-                for i, module in enumerate(attr):
-                    if hasattr(module, 'device'):
-                        print(f"{name}[{i}] is on {module.device}")
-                    else:
-                        # For nn.Modules that do not have a 'device' attribute directly
-                        print(f"{name}[{i}] is on {next(module.parameters()).device}")
-            elif isinstance(attr, nn.Module):
-                # For nn.Modules that do not have a 'device' attribute directly
-                print(f"{name} is on {next(attr.parameters()).device}")
+            if isinstance(attr, torch.Tensor):
+                print(f"Tensor {name} is on {attr.device}")
     
     def forward(self, x):
         if self.embed is None or self.unembed is None:
             raise ValueError('Embeddings are not set. Did you set a tokenizer yet?')
+
+        print("---NEW SAMPLE---")
+        print(f"Example input sequence (1st in batch, text): {self.tokenizer.decode(x[0].squeeze(0))}")
+        print(f"Input sequnece (tokens): {x}")
 
         x = self.embed(x.long())
         _, t, _ = x.size()
@@ -229,7 +249,7 @@ class GPT(nn.Module):
             x = transformer(x)
 
         # Normalize
-        x = self.norm(x)
+        x = self.norm(x).squeeze(0)
 
         # Unembed output
         y = self.unembed(x)
@@ -252,11 +272,12 @@ class GPT(nn.Module):
         # TODO: Perhaps handle batch sampling too?
         if self.tokenizer is None:
             raise ValueError("No tokenizer provided. Please provide a GPTTokenizer")
-        
-        # encode input
-        tokens = self.tokenizer.encode(x)
 
-        # batchify
+        # Encode input, place on device
+        tokens = self.tokenizer.encode(x)
+        tokens = tokens.to(self.device)
+
+        # Batchify
         tokens = tokens.unsqueeze(0)
 
         # incrementally add tokens
@@ -274,7 +295,7 @@ class GPT(nn.Module):
             # Append predicted token to tokens
             tokens = torch.cat((tokens, pred.unsqueeze(0)), dim=1)
         
-        # unbatchify and decode
+        # Unbatchify and decode
         tokens = tokens[0]
         result = self.tokenizer.decode(tokens)
 
