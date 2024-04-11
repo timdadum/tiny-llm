@@ -110,13 +110,13 @@ class SinusoidalPositionalEncoding(nn.Module):
         super(SinusoidalPositionalEncoding, self).__init__()
         self.k = k
 
-    def forward(self, t):
+    def forward(self, t, device):
         # Define sequence positions and common division term
-        pos = torch.arange(0, t).unsqueeze(1)
-        div = 10000**(2*torch.arange(0 ,self.k, 2)/self.k)
+        pos = torch.arange(0, t, device=device).unsqueeze(1)
+        div = 10000**(2*torch.arange(0 ,self.k, 2, device=device)/self.k)
         
         # Fill sine and cosine encodings
-        y = torch.zeros(t, self.k)
+        y = torch.zeros(t, self.k, device=device)
         y[:,0::2] = torch.sin(pos/div)
         y[:,1::2] = torch.cos(pos/div)
 
@@ -186,8 +186,8 @@ class GPT(nn.Module):
         # Instantiate (or skeleton) components
         self.embed = None
         self.pos_encoding = SinusoidalPositionalEncoding(k).to(device)
-        self.transformers = [TransformerBlock(k, heads).to(device) for i in range(blocks)]
-        self.norm = nn.LayerNorm(k)
+        self.transformers = nn.ModuleList([TransformerBlock(k, heads).to(self.device) for i in range(blocks)])
+        self.norm = nn.LayerNorm(k).to(device)
         self.unembed = None
 
         # Save hyperparameters
@@ -197,6 +197,22 @@ class GPT(nn.Module):
 
         # Create inference-time tokenizer
         self.tokenizer = None
+
+    def check_device_of_components(self):
+        # Iterate through each attribute of the model
+        for name, attr in self.__dict__.items():
+            if hasattr(attr, 'device'):
+                print(f"{name} is on {attr.device}")
+            elif isinstance(attr, nn.ModuleList) or isinstance(attr, list):
+                for i, module in enumerate(attr):
+                    if hasattr(module, 'device'):
+                        print(f"{name}[{i}] is on {module.device}")
+                    else:
+                        # For nn.Modules that do not have a 'device' attribute directly
+                        print(f"{name}[{i}] is on {next(module.parameters()).device}")
+            elif isinstance(attr, nn.Module):
+                # For nn.Modules that do not have a 'device' attribute directly
+                print(f"{name} is on {next(attr.parameters()).device}")
     
     def forward(self, x):
         if self.embed is None or self.unembed is None:
@@ -206,7 +222,7 @@ class GPT(nn.Module):
         _, t, _ = x.size()
 
         # Add positional encoding
-        x += self.pos_encoding(t)
+        x += self.pos_encoding(t, device=self.device)
         
         # Apply series of transformer blocks
         for transformer in self.transformers:

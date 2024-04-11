@@ -30,6 +30,7 @@ train_loader, test_loader = DataLoader(train_set, batch_size=train_params['batch
 # Set device
 device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
 print(f'Training device is {device}')
+model.check_device_of_components()
 
 # Train or load earlier state
 model_name = 'brown'
