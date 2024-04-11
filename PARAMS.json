@@ -12,7 +12,8 @@
     "Hyperparameters": {
         "k": 8, 
         "blocks": 1,
-        "heads": 1
+        "heads": 1,
+        "device": "cpu"
     },
     "Files": {
         "tokenizer": "tiny-llm/tokenizers/brown.json",

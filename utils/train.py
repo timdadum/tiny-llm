@@ -42,6 +42,9 @@ def train_one_epoch(model, train_loader, optim, loss_function, device, scaler):
         # Calculate model output
         optim.zero_grad()
         X, y = to_device(batch, device)
+
+        print(f"Device X: {X.device}, device y: {y.device}")
+
         out = model(X)
 
         y = to_one_hot_label(y, model.tokenizer.vocab_size)

@@ -178,32 +178,25 @@ class GPTTokenizer:
         f"""Tokenizer succesfully saved at {path}"""
 
 class GPT(nn.Module):
-    def __init__(self, k=128, heads=2, blocks=2, device='cpu'):
+    def __init__(self, k=128, heads=2, blocks=2, device=None):
         super(GPT, self).__init__()
+        # Explicitly define device during declaration
+        self.device = device if device else torch.device('cpu')
+        
+        # Instantiate (or skeleton) components
         self.embed = None
-        self.pos_encoding = SinusoidalPositionalEncoding(k)
-        self.transformers = [TransformerBlock(k, heads) for i in range(blocks)]
+        self.pos_encoding = SinusoidalPositionalEncoding(k).to(device)
+        self.transformers = [TransformerBlock(k, heads).to(device) for i in range(blocks)]
         self.norm = nn.LayerNorm(k)
         self.unembed = None
 
+        # Save hyperparameters
         self.k = k
         self.heads = heads
         self.blocks = blocks
 
         # Create inference-time tokenizer
         self.tokenizer = None
-
-    def place_device(self, device):
-        """Sets device for entire model in one go"""
-        if self.embed is None or self.unembed is None:
-            raise ValueError('Embeddings are not set. Please set tokenizer before placing device')
-        
-        # Explicitly update each model component to the specified device
-        self.embed = self.embed.to(device)
-        self.pos_encoding = self.pos_encoding.to(device)
-        self.transformers = [transformer.to(device) for transformer in self.transformers]
-        self.norm = self.norm.to(device)
-        self.unembed = self.unembed.to(device)
     
     def forward(self, x):
         if self.embed is None or self.unembed is None:
@@ -232,9 +225,9 @@ class GPT(nn.Module):
             raise ValueError("Tokenizer is not of class GPTTokenizer")
         self.tokenizer = tokenizer
 
-        # Set layers accordingly
-        self.embed = nn.Embedding(self.tokenizer.vocab_size, self.k)
-        self.unembed = nn.Linear(self.k, self.tokenizer.vocab_size)
+        # Set layers accordingly, place on device
+        self.embed = nn.Embedding(self.tokenizer.vocab_size, self.k).to(self.device)
+        self.unembed = nn.Linear(self.k, self.tokenizer.vocab_size).to(self.device)
 
         print("Tokenizer succesfully set")
 
