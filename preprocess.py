@@ -6,8 +6,8 @@ with open('tiny-llm/PARAMS.json', 'r') as file:
     config = json.load(file)
 
 # Run preprocessing
-run_name = 'brown'
-fraction = 0.001
+run_name = 'debug'
+fraction = 0.1
 unk_threshold = 1e-4
 
 tokenizer_path = config["Files"]["tokenizer"]

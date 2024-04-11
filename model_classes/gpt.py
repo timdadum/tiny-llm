@@ -8,28 +8,6 @@ import json
 import re
 
 # NO DROPOUT AND SKIP-CONNECTIONS YET!
-
-"""
-class SelfAttention(nn.Module):
-    def __init__(self, k):
-        super(SelfAttention, self).__init__()
-
-        self.k = k
-
-        # Self-attention
-        self.Wq = nn.Linear(k, k, bias=False)
-        self.Wk = nn.Linear(k, k, bias=False)
-        self.Wv = nn.Linear(k, k, bias=False)
-
-    def forward(self, x):
-        # Assumes x ~ (batch size, sequence length, embedding dimension) 
-        b, t, k = x.size()
-        queries, keys, values = self.Wq(x), self.Wk(x), self.Wv(x)
-        w = torch.bmm(queries, keys.transpose(1,2)) / np.sqrt(k)
-        w_norm = F.softmax(w, dim=2)
-        y = torch.bmm(w_norm, values)
-        return y
-"""
     
 class MultiHeadAttention(nn.Module):
     def __init__(self, k, heads):
@@ -135,27 +113,26 @@ class GPTTokenizer:
             self.encoding = json.load(file)
             self.decoding = {j: i for i, j in self.encoding.items()}
             self.vocab_size = len(self.encoding)
-        print(self.encoding)
 
     def tokenize(self, text):
         text = text.lower()
         tokens = np.array(re.findall(r"\b\w+'\w+|\w+|[^\w\s]", text))
         return tokens
 
-    def fit(self, corpus, unk_threshold=1e-4, encode=False):
+    def fit(self, corpus, unk_threshold=5, encode=False):
         """Determine the encoding from the corpus."""
         tokens = self.tokenize(corpus)
         unique, counts = np.unique(tokens, return_counts=True)
-        threshold = np.round(unk_threshold * len(tokens))
-        rare_tokens = unique[counts < threshold]
+        rare_tokens = unique[counts < unk_threshold]
         
-        # Mask rare words as '<UNK>'
+        # Mask rare words as '<UNK>', redefine unique tokens
         tokens = np.where(np.isin(tokens, rare_tokens), '<UNK>', tokens)
         unique = np.unique(tokens)
         
         # Create mapping with '<UNK>' as a special case
-        mapping = {token: i for i, token in enumerate(unique, start=1)}  # Start indexing from 1
-        mapping['<UNK>'] = 0  # Assign 0 to '<UNK>'
+        mapping = {'<UNK>': 0}  # Start with '<UNK>' token
+        for i, token in enumerate(unique, start=1):
+          mapping[token] = i
 
         # Round up vocabulary
         vocab_size = len(mapping)
@@ -166,22 +143,18 @@ class GPTTokenizer:
 
         # Encode after fitting if required
         if encode:
-            tokens = self.encode(corpus)
-            return tokens
+            return self.encode(tokens)
 
-    def encode(self, text):
+    def encode(self, tokens):
         """Encode a text using the tokenizer's encoding."""
         if self.encoding is None:
             raise ValueError("Encoding has not been set. Please load an encoding or fit the tokenizer.")
-        
-        tokens = self.tokenize(text)
+  
         encoded_text = [self.encoding[token] for token in tokens]
         encoded_tensor = torch.tensor(encoded_text, dtype=torch.long)
         return encoded_tensor
 
     def decode(self, tokens):
-        print(f"Shape: {tokens.size()}")
-        print(f"Decoding... Tokens: {tokens}")
         decoded_tokens = [self.decoding[int(token)] for token in tokens]
         decoded_text = ' '.join(decoded_tokens)
         return decoded_text
@@ -234,9 +207,8 @@ class GPT(nn.Module):
         if self.embed is None or self.unembed is None:
             raise ValueError('Embeddings are not set. Did you set a tokenizer yet?')
 
-        print("---NEW SAMPLE---")
-        print(f"Example input sequence (1st in batch, text): {self.tokenizer.decode(x[0].squeeze(0))}")
-        print(f"Input sequnece (tokens): {x}")
+        print(f"Shape of x: {x.size()}")
+        print(f"Shape of embedding layer: {self.embed}")
 
         x = self.embed(x.long())
         _, t, _ = x.size()
@@ -286,7 +258,7 @@ class GPT(nn.Module):
             y = self(tokens)
 
             # Index last-in-sequence probabilities, apply temperature and softmax to output probs
-            y = y[0,-1,:] / T
+            y = y[-1,:] / T
             probs = torch.softmax(y, dim=0)
 
             # Predict from resulting probability distribution

@@ -21,4 +21,4 @@ trained_model = load_model(gpt.GPT, config)
 prompt = "In the State of Texas, President Kennedy addressed the public on the importance of healthcare reform. He emphasized that every citizen deserves access to medical care, regardless of their income. The administration's new plan aims to increase funding for local hospitals and introduce a program to lower the cost of prescription drugs. As debates in the House and Senate continue, Mr. Kennedy urged lawmakers to prioritize the well-being of the American people over partisan politics"
 result = trained_model.sample(prompt)
 
-# print(f'result is {result}')
+print(f'result is {result}')

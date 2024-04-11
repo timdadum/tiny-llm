@@ -16,9 +16,9 @@
         "device": "cpu"
     },
     "Files": {
-        "tokenizer": "tiny-llm/tokenizers/brown.json",
-        "corpus": "tiny-llm/corpuses/brown.txt",
-        "data": "tiny-llm/data/brown.pkl",
-        "model": "tiny-llm/trained_models/brown"
+        "tokenizer": "tiny-llm/tokenizers/debug.json",
+        "corpus": "tiny-llm/corpuses/debug.txt",
+        "data": "tiny-llm/data/debug.pkl",
+        "model": "tiny-llm/trained_models/debug"
     }
 }
