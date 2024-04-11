@@ -11,12 +11,12 @@ def get_file_path(relative_path):
 
 def load_training_data(config):
     """Loads training and testing data from a pickle file."""
-    path = config['Files']['data']
+    data_path = config['Files']['data']
 
-    if not os.path.isfile(path):
-        raise FileNotFoundError(f'File not found at {path}')
+    if not os.path.isfile(data_path):
+        raise FileNotFoundError(f'File not found at {data_path}')
 
-    with open(path, 'rb') as dat:
+    with open(data_path, 'rb') as dat:
         train_set, test_set = pk.load(dat)
         
     return train_set, test_set

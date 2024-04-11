@@ -178,7 +178,7 @@ class GPTTokenizer:
         f"""Tokenizer succesfully saved at {path}"""
 
 class GPT(nn.Module):
-    def __init__(self, k=128, heads=2, blocks=2):
+    def __init__(self, k=128, heads=2, blocks=2, device='cpu'):
         super(GPT, self).__init__()
         self.embed = None
         self.pos_encoding = SinusoidalPositionalEncoding(k)
@@ -193,6 +193,18 @@ class GPT(nn.Module):
         # Create inference-time tokenizer
         self.tokenizer = None
 
+    def place_device(self, device):
+        """Sets device for entire model in one go"""
+        if self.embed is None or self.unembed is None:
+            raise ValueError('Embeddings are not set. Please set tokenizer before placing device')
+        
+        # Explicitly update each model component to the specified device
+        self.embed = self.embed.to(device)
+        self.pos_encoding = self.pos_encoding.to(device)
+        self.transformers = [transformer.to(device) for transformer in self.transformers]
+        self.norm = self.norm.to(device)
+        self.unembed = self.unembed.to(device)
+    
     def forward(self, x):
         if self.embed is None or self.unembed is None:
             raise ValueError('Embeddings are not set. Did you set a tokenizer yet?')
