@@ -67,6 +67,9 @@ class TransformerBlock(nn.Module):
         # Apply self-attention
         att = self.att(x)
 
+        # Skip connection for improved flow
+        att += x
+
         # Normalize
         att_norm = self.norm1(att)
 
@@ -75,6 +78,9 @@ class TransformerBlock(nn.Module):
 
         # Normalize
         y = self.norm2(ff)
+
+        # Skip connection again
+        y += att_norm
 
         return y
 
@@ -112,21 +118,26 @@ class GPTTokenizer:
         with open(path, 'r') as file:
             self.encoding = json.load(file)
             self.decoding = {j: i for i, j in self.encoding.items()}
-            self.vocab_size = len(self.encoding)
+            self.vocab_size = len(self.encoding) + 1
 
     def tokenize(self, text):
         text = text.lower()
         tokens = np.array(re.findall(r"\b\w+'\w+|\w+|[^\w\s]", text))
+
+        # Replace unknown tokens
+        tokens = np.array([token if token in self.encoding.keys() else '<UNK>' for token in tokens])
         return tokens
 
     def fit(self, corpus, unk_threshold=5, encode=False):
         """Determine the encoding from the corpus."""
         tokens = self.tokenize(corpus)
+
         unique, counts = np.unique(tokens, return_counts=True)
         rare_tokens = unique[counts < unk_threshold]
         
         # Mask rare words as '<UNK>', redefine unique tokens
         tokens = np.where(np.isin(tokens, rare_tokens), '<UNK>', tokens)
+
         unique = np.unique(tokens)
         
         # Create mapping with '<UNK>' as a special case
@@ -134,8 +145,10 @@ class GPTTokenizer:
         for i, token in enumerate(unique, start=1):
           mapping[token] = i
 
+        print(list(mapping.items())[-10:])  # Print the last 10 mappings to check indices
+
         # Round up vocabulary
-        vocab_size = len(mapping)
+        vocab_size = len(mapping) + 1
         self.encoding = mapping
         self.decoding = {j: i for i, j in mapping.items()}
         self.vocab_size = vocab_size
@@ -207,9 +220,7 @@ class GPT(nn.Module):
         if self.embed is None or self.unembed is None:
             raise ValueError('Embeddings are not set. Did you set a tokenizer yet?')
 
-        print(f"Shape of x: {x.size()}")
-        print(f"Shape of embedding layer: {self.embed}")
-
+        # Embed input
         x = self.embed(x.long())
         _, t, _ = x.size()
 
@@ -246,16 +257,17 @@ class GPT(nn.Module):
             raise ValueError("No tokenizer provided. Please provide a GPTTokenizer")
 
         # Encode input, place on device
-        tokens = self.tokenizer.encode(x)
-        tokens = tokens.to(self.device)
+        tokens = self.tokenizer.tokenize(x)
+        encodings = self.tokenizer.encode(tokens)
+        encodings = encodings.to(self.device)
 
         # Batchify
-        tokens = tokens.unsqueeze(0)
+        encodings = encodings.unsqueeze(0)
 
         # incrementally add tokens
         for i in range(generation_length):
             # Forward pass
-            y = self(tokens)
+            y = self(encodings)
 
             # Index last-in-sequence probabilities, apply temperature and softmax to output probs
             y = y[-1,:] / T
@@ -264,11 +276,11 @@ class GPT(nn.Module):
             # Predict from resulting probability distribution
             pred = torch.multinomial(probs, num_samples=1)
 
-            # Append predicted token to tokens
-            tokens = torch.cat((tokens, pred.unsqueeze(0)), dim=1)
+            # Append predicted token to encodings
+            encodings = torch.cat((encodings, pred.unsqueeze(0)), dim=1)
         
         # Unbatchify and decode
-        tokens = tokens[0]
-        result = self.tokenizer.decode(tokens)
+        encodings = encodings[0]
+        result = self.tokenizer.decode(encodings)
 
         return result
