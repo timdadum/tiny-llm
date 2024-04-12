@@ -55,17 +55,20 @@ class TransformerBlock(nn.Module):
         super(TransformerBlock, self).__init__()
 
         self.att = MultiHeadAttention(k, heads=heads)
+        self.dropout1 = nn.Dropout(p=0.2)
         self.norm1 = nn.LayerNorm(k)
         self.ff = nn.Sequential(
             nn.Linear(k, 4*k),
             nn.GELU(),
             nn.Linear(4*k, k)
         )
+        self.dropout2 = nn.Dropout(p=0.2)
         self.norm2 = nn.LayerNorm(k)
 
     def forward(self, x):
-        # Apply self-attention
+        # Apply self-attention and dropout
         att = self.att(x)
+        att = self.dropout1(att)
 
         # Skip connection for improved flow
         att += x
@@ -73,14 +76,15 @@ class TransformerBlock(nn.Module):
         # Normalize
         att_norm = self.norm1(att)
 
-        # Feed-forward
+        # Feed-forward and dropout
         ff = self.ff(att_norm)
+        ff = self.dropout2(ff)
+
+        # Skip connection again
+        ff += att_norm
 
         # Normalize
         y = self.norm2(ff)
-
-        # Skip connection again
-        y += att_norm
 
         return y
 
@@ -120,17 +124,18 @@ class GPTTokenizer:
             self.decoding = {j: i for i, j in self.encoding.items()}
             self.vocab_size = len(self.encoding) + 1
 
-    def tokenize(self, text):
+    def tokenize(self, text, replace=True):
         text = text.lower()
         tokens = np.array(re.findall(r"\b\w+'\w+|\w+|[^\w\s]", text))
 
-        # Replace unknown tokens
-        tokens = np.array([token if token in self.encoding.keys() else '<UNK>' for token in tokens])
+        if replace:
+            # Replace unknown tokens
+            tokens = np.array([token if token in self.encoding.keys() else '<UNK>' for token in tokens])
         return tokens
 
     def fit(self, corpus, unk_threshold=5, encode=False):
         """Determine the encoding from the corpus."""
-        tokens = self.tokenize(corpus)
+        tokens = self.tokenize(corpus, replace=False)
 
         unique, counts = np.unique(tokens, return_counts=True)
         rare_tokens = unique[counts < unk_threshold]
@@ -187,6 +192,7 @@ class GPT(nn.Module):
         # Instantiate (or skeleton) components
         self.embed = None
         self.pos_encoding = SinusoidalPositionalEncoding(k).to(device)
+        self.dropout1 = nn.Dropout(p=0.2)
         self.transformers = nn.ModuleList([TransformerBlock(k, heads).to(self.device) for i in range(blocks)])
         self.norm = nn.LayerNorm(k).to(device)
         self.unembed = None
