@@ -1,6 +1,6 @@
 import torch.nn as nn
 import numpy as np
-import torch.nn.functional as F
+import torch.nn.functional as F 
 import torch
 import unittest
 import torch.testing as torch_testing
@@ -226,7 +226,9 @@ class GPT(nn.Module):
         if self.embed is None or self.unembed is None:
             raise ValueError('Embeddings are not set. Did you set a tokenizer yet?')
 
-        # Embed input
+        # Embed, catch index errors early
+        if (x < 0).any() or (x >= self.embed.num_embeddings).any():
+            raise ValueError("Input index out of bounds")
         x = self.embed(x.long())
         _, t, _ = x.size()
 
@@ -244,28 +246,31 @@ class GPT(nn.Module):
         y = self.unembed(x)
         return y
     
-    def set_tokenizer(self, tokenizer):
+    def set_tokenizer(self, tokenizer, config):
         """Takes a GPTTokenizer class and assigns to class for convenience"""
-        if not isinstance(tokenizer, GPTTokenizer):
-            raise ValueError("Tokenizer is not of class GPTTokenizer")
+        # if not isinstance(tokenizer, GPTTokenizer):
+        #     raise ValueError("Tokenizer is not of class GPTTokenizer")
         self.tokenizer = tokenizer
+        vocab_size = config['BPE_Params']['vocab_size']
+        self.tokenizer.vocab_size = vocab_size # assign vocabulary size to tokenizer for convenience
 
         # Set layers accordingly, place on device
-        self.embed = nn.Embedding(self.tokenizer.vocab_size, self.k).to(self.device)
-        self.unembed = nn.Linear(self.k, self.tokenizer.vocab_size).to(self.device)
+        self.embed = nn.Embedding(vocab_size, self.k).to(self.device)
+        self.unembed = nn.Linear(self.k, vocab_size).to(self.device)
 
         print("Tokenizer succesfully set")
 
-    def sample(self, x, T=1.0, generation_length=128):
+    def sample(self, x: str, T: int=1.0, generation_length: int=128):
         """Generates new text based on input prompt"""
         # TODO: Perhaps handle batch sampling too?
         if self.tokenizer is None:
             raise ValueError("No tokenizer provided. Please provide a GPTTokenizer")
 
         # Encode input, place on device
-        tokens = self.tokenizer.tokenize(x)
-        encodings = self.tokenizer.encode(tokens)
-        encodings = encodings.to(self.device)
+        # tokens = self.tokenizer.tokenize(x)
+        encodings = self.tokenizer.encode(x).ids # IS A LIST!
+        encodings = torch.tensor(encodings, dtype=torch.long)
+        # encodings = encodings.to(self.device)
 
         # Batchify
         encodings = encodings.unsqueeze(0)
@@ -286,7 +291,7 @@ class GPT(nn.Module):
             encodings = torch.cat((encodings, pred.unsqueeze(0)), dim=1)
         
         # Unbatchify and decode
-        encodings = encodings[0]
+        encodings = encodings[0].tolist()
         result = self.tokenizer.decode(encodings)
 
         return result

@@ -14,28 +14,25 @@ import numpy as np
 import re
 
 # TOKENIZATION AND ENCODING
-"""
-def create_tokenizer(corpus_path, tokenizer_name, vocab_size):
+def create_tokenizer(corpus_path, tokenizer_path, vocab_size):
     # Initialize a tokenizer with BPE model
-    tokenizer = Tokenizer(BPE(unk_token=None))
+    tokenizer = Tokenizer(BPE(unk_token='<UNK>'))
     tokenizer.pre_tokenizer = Whitespace()
 
     # Initialize the trainer with your desired vocabulary size
-    trainer = BpeTrainer(vocab_size=vocab_size)
+    trainer = BpeTrainer(vocab_size=vocab_size, special_tokens=['<UNK>'])
 
     # List of files to train on
+    print(f"Corpus path: {corpus_path}")
     files = [corpus_path]
 
     # Train the tokenizer
     tokenizer.train(files, trainer)
 
     # Saving the tokenizer
-    save_path = f'tiny-llm/tokenizers/{tokenizer_name}.json'
-    print(f"Save path: {save_path}")
-    tokenizer.save(save_path)
-    print(f"Succesfully saved tokenizer at {save_path}")
+    tokenizer.save(tokenizer_path)
+    print(f"Succesfully saved tokenizer at {tokenizer_path}")
     return tokenizer
-"""
     
 # DATALOADER PREPARATION        
 def split(encodings, split=0.8):
@@ -89,7 +86,6 @@ def save_data(data, data_goal_path: str):
         pk.dump(data, file)
         print("Succesfully saved data.")
 
-'''
 # BPE PRE- AND POST-PROCESSING
 def bpe_preprocess(text, save=True, corpus_path=None):
     """Adds special tokens for the model to learn. Overview of special tokens:
@@ -128,10 +124,9 @@ def bpe_postprocess(output):
         return re.sub(r"(?<=\.)(\w)", lambda match: match.group(1).upper(), text)
     output = capitalize_after_period(output)
     return output
-'''
 
 # MAIN PREPARATION FUNCTION
-def prepare(corpus_path, tokenizer_path, data_goal_path, unk_threshold=1e-4, fraction=1.0):
+def prepare(corpus_path, tokenizer_path, data_goal_path, config, unk_threshold=1e-4, fraction=1.0):
     # Load and preprocess corpus
     corpus = read_corpus(corpus_path)
     
@@ -140,16 +135,17 @@ def prepare(corpus_path, tokenizer_path, data_goal_path, unk_threshold=1e-4, fra
     print(f"Taking {n} characters out of total {len(corpus)}: {fraction*100}%")
     corpus = corpus[:n]
 
-    # Fit a tokenizer, save it too
-    tokenizer = GPTTokenizer()
-    tokens = tokenizer.fit(corpus, unk_threshold=unk_threshold, encode=True)
-    tokenizer.save(tokenizer_path)
-    vocab_size = tokenizer.vocab_size
-    
+    # Fit tokenizer, save
+    vocab_size = config['BPE_Params']['vocab_size']
+    tokenizer = create_tokenizer(corpus_path, tokenizer_path=tokenizer_path, vocab_size=vocab_size)
+
+    tokens = tokenizer.encode(corpus).ids
+
     # Split training sequences
+    sequence_length = config['BPE_Params']['sequence_length']
     train_corpus, test_corpus = split(tokens, split=0.8)
-    X_train, y_train = get_features_and_labels(train_corpus, vocab_size=vocab_size)
-    X_test, y_test = get_features_and_labels(test_corpus, vocab_size=vocab_size)
+    X_train, y_train = get_features_and_labels(train_corpus, t=sequence_length, vocab_size=vocab_size)
+    X_test, y_test = get_features_and_labels(test_corpus, t=sequence_length, vocab_size=vocab_size)
     print(f"Train dimensions: {X_train.size()}, {y_train.size()}. Test dimensions: {X_test.size()}, {y_test.size()}")
 
     # Create dataloaders
