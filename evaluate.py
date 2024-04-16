@@ -1,7 +1,6 @@
 import torch
 from model_classes import gpt
-from tokenizers.models import BPE
-from tokenizers import Tokenizer
+from utils.tokenization import load_tokenizer
 import json
 
 with open('tiny-llm/PARAMS.json', 'r') as file:
@@ -9,18 +8,27 @@ with open('tiny-llm/PARAMS.json', 'r') as file:
 
 def load_model(model_class, config):
     model = model_class(**config['Hyperparameters'])
-    tokenizer = Tokenizer(BPE(unk_token='<UNK>'))
-    tokenizer = tokenizer.from_file(config['Files']['tokenizer'])
-    
+    tokenizer = load_tokenizer(config)
     model.set_tokenizer(tokenizer, config)
-    model.load_state_dict(torch.load(config['Files']['model'], map_location=config['Hyperparameters']['device']))
+    model.load_state_dict(torch.load(config['Files']['model'], map_location=config['Train_Params']['device']))
     model.eval()
     return model
 
 trained_model = load_model(gpt.GPT, config)
 
 # Test results
-prompt = "lightning _illuminates _the _sky, _followed _by _the _deep _rumble _of _thunder _rolling _across _the"
-result = trained_model.sample(prompt)
+prompt = "The lightning struck"
 
+# DEBUG
+# Example text
+test_sentence = "The lightning struck."
+encoded = trained_model.tokenizer.encode(test_sentence)
+print("Encoded Tokens:", encoded.tokens)
+print("Encoded IDs:", encoded.ids)
+
+# Decode the output
+decoded_output = trained_model.tokenizer.decode(encoded.ids)
+print("Decoded Output:", decoded_output)
+
+result = trained_model.sample(prompt)
 print(f'result is {result}')

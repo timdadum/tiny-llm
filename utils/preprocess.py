@@ -1,26 +1,24 @@
-import os
-from tokenizers import Tokenizer
-
-from tokenizers.pre_tokenizers import Whitespace
-from tokenizers.models import BPE
-from tokenizers.trainers import BpeTrainer
 import pickle as pk
-import json
-from model_classes.gpt import GPTTokenizer
-
 import torch
 from torch.utils.data import Dataset
-import numpy as np
 import re
+from utils.tokenization import * 
 
 # TOKENIZATION AND ENCODING
-def create_tokenizer(corpus_path, tokenizer_path, vocab_size):
+"""
+unk_token = "<UNK>"
+spl_tokens = ["<UNK>", "<SEP>", "<MASK>", "<CLS>"]
+
+def create_tokenizer(tokenizer, trainer, corpus_path, tokenizer_path, vocab_size):
     # Initialize a tokenizer with BPE model
-    tokenizer = Tokenizer(BPE(unk_token='<UNK>'))
+    bpe_config = {'unk_token': '<UNK>', 'end_of_word_suffix': '</w>'}
+    tokenizer = Tokenizer(BPE(**bpe_config))
     tokenizer.pre_tokenizer = Whitespace()
+    # Use a BPE decoder to reverse the tokenization
+    tokenizer.decoder = BPEDecoder(suffix='</w>')
 
     # Initialize the trainer with your desired vocabulary size
-    trainer = BpeTrainer(vocab_size=vocab_size, special_tokens=['<UNK>'])
+    trainer = BpeTrainer(vocab_size=vocab_size, special_tokens=['<UNK>', '<PAD>', '<CLS>', '<SEP>'])
 
     # List of files to train on
     print(f"Corpus path: {corpus_path}")
@@ -30,9 +28,11 @@ def create_tokenizer(corpus_path, tokenizer_path, vocab_size):
     tokenizer.train(files, trainer)
 
     # Saving the tokenizer
+    tokenizer.model_kwargs = bpe_config
     tokenizer.save(tokenizer_path)
     print(f"Succesfully saved tokenizer at {tokenizer_path}")
     return tokenizer
+"""
     
 # DATALOADER PREPARATION        
 def split(encodings, split=0.8):
@@ -125,28 +125,33 @@ def bpe_postprocess(output):
     output = capitalize_after_period(output)
     return output
 
-# MAIN PREPARATION FUNCTION
-def prepare(corpus_path, tokenizer_path, data_goal_path, config, unk_threshold=1e-4, fraction=1.0):
-    # Load and preprocess corpus
-    corpus = read_corpus(corpus_path)
-    
-     # Take fraction of corpus
+def take_corpus_fraction(corpus, fraction):
+    # Take fraction of corpus
     n = round(fraction * len(corpus))
     print(f"Taking {n} characters out of total {len(corpus)}: {fraction*100}%")
-    corpus = corpus[:n]
+    corpus_fraction = corpus[:n]
+    return corpus_fraction
 
-    # Fit tokenizer, save
-    vocab_size = config['BPE_Params']['vocab_size']
-    tokenizer = create_tokenizer(corpus_path, tokenizer_path=tokenizer_path, vocab_size=vocab_size)
+def create_sequences(config, tokens):
+    train_corpus, test_corpus = split(tokens, split=0.8)
+    X_train, y_train = get_features_and_labels(train_corpus, t=config['Data_Params']['sequence_length'], vocab_size=config['BPE_Params']['vocab_size'])
+    X_test, y_test = get_features_and_labels(test_corpus, t=config['Data_Params']['sequence_length'], vocab_size=config['BPE_Params']['vocab_size'])
+    print(f"Train dimensions: {X_train.size()}, {y_train.size()}. Test dimensions: {X_test.size()}, {y_test.size()}")
+    return X_train, y_train, X_test, y_test
 
+# MAIN PREPARATION FUNCTION
+def prepare(config, fraction=1.0):
+    # Load and preprocess corpus
+    corpus = read_corpus(config['Files']['corpus'])
+    if fraction != 1.0:
+        corpus = take_corpus_fraction(corpus, fraction)
+    
+    # Train a tokenizer (automatically saves), tokenize corpus
+    tokenizer = train_tokenizer(config)
     tokens = tokenizer.encode(corpus).ids
 
     # Split training sequences
-    sequence_length = config['BPE_Params']['sequence_length']
-    train_corpus, test_corpus = split(tokens, split=0.8)
-    X_train, y_train = get_features_and_labels(train_corpus, t=sequence_length, vocab_size=vocab_size)
-    X_test, y_test = get_features_and_labels(test_corpus, t=sequence_length, vocab_size=vocab_size)
-    print(f"Train dimensions: {X_train.size()}, {y_train.size()}. Test dimensions: {X_test.size()}, {y_test.size()}")
+    X_train, y_train, X_test, y_test = create_sequences(config, tokens)
 
     # Create dataloaders
     test_set = Corpus(X_test, y_test)
@@ -154,6 +159,6 @@ def prepare(corpus_path, tokenizer_path, data_goal_path, config, unk_threshold=1
     
     # Save data
     data = (train_set, test_set)
-    save_data(data, data_goal_path)
+    save_data(data, config['Files']['data'])
 
     return data

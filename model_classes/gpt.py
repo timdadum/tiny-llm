@@ -268,9 +268,11 @@ class GPT(nn.Module):
 
         # Encode input, place on device
         # tokens = self.tokenizer.tokenize(x)
-        encodings = self.tokenizer.encode(x).ids # IS A LIST!
+        encodings = self.tokenizer.encode(x)
+        print(f"Encoded tokens by tokenizer: {encodings.tokens}")
+        encodings = encodings.ids
         encodings = torch.tensor(encodings, dtype=torch.long)
-        # encodings = encodings.to(self.device)
+        encodings = encodings.to(self.device)
 
         # Batchify
         encodings = encodings.unsqueeze(0)

@@ -2,19 +2,21 @@
     "BPE_Params": {
         "vocab_size": 128,
         "max_token_length": 8,
-        "special_tokens": ["[UNK]"],
-        "sequence_length": 8
+        "special_tokens": ["[UNK]"]
+    },
+    "Data_Params": {
+        "sequence_length": 16
     },
     "Train_Params": {
         "epochs": 10,
         "lr": 1e-4,
-        "batch_size": 128
+        "batch_size": 128,
+        "device": "cpu"
     },
     "Hyperparameters": {
         "k": 16, 
         "blocks": 1,
-        "heads": 1,
-        "device": "cpu"
+        "heads": 1
     },
     "Files": {
         "tokenizer": "tiny-llm/tokenizers/nature.json",
