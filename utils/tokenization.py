@@ -1,17 +1,20 @@
-from model_classes.gpt import GPTTokenizer
 from transformers import AutoTokenizer
 from tokenizers.decoders import BPEDecoder
 
 from tokenizers import Tokenizer
 
-from tokenizers.pre_tokenizers import Whitespace
+from tokenizers.pre_tokenizers import ByteLevel as ByteLevelPretokenizer
 from tokenizers.models import BPE
+from tokenizers.normalizers import BertNormalizer
+from tokenizers.processors import ByteLevel as ByteLevelProcessor
 from tokenizers.trainers import BpeTrainer
 
 def prepare_tokenizer_trainer(config, unk_token, spl_tokens, alg='BPE'):
-    tokenizer = Tokenizer(BPE(unk_token=unk_token))
+    tokenizer = Tokenizer(BPE(unk_token=unk_token, end_of_word_suffix='<\w>'))
     trainer = BpeTrainer(vocab_size=config['BPE_Params']['vocab_size'], special_tokens=spl_tokens)
-    tokenizer.pre_tokenizer = Whitespace()
+    tokenizer.pre_tokenizer = ByteLevelPretokenizer()
+    tokenizer.normalizer = BertNormalizer()
+    tokenizer.post_processor = ByteLevelProcessor()
     return tokenizer, trainer
 
 def train_tokenizer(config, unk_token='<UNK>', spl_tokens=["<UNK>", "<SEP>", "<MASK>", "<CLS>"], alg='BPE'):
@@ -25,3 +28,8 @@ def train_tokenizer(config, unk_token='<UNK>', spl_tokens=["<UNK>", "<SEP>", "<M
 
 def load_tokenizer(config):
     return Tokenizer.from_file(config['Files']['tokenizer'])
+
+def post_process(output):
+  output = output.replace(" ", "")
+  output = output.replace('Ġ',' ')
+  return output

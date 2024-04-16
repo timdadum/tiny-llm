@@ -17,18 +17,6 @@ def load_model(model_class, config):
 trained_model = load_model(gpt.GPT, config)
 
 # Test results
-prompt = "The lightning struck"
-
-# DEBUG
-# Example text
-test_sentence = "The lightning struck."
-encoded = trained_model.tokenizer.encode(test_sentence)
-print("Encoded Tokens:", encoded.tokens)
-print("Encoded IDs:", encoded.ids)
-
-# Decode the output
-decoded_output = trained_model.tokenizer.decode(encoded.ids)
-print("Decoded Output:", decoded_output)
-
+prompt = "badger badger"
 result = trained_model.sample(prompt)
 print(f'result is {result}')

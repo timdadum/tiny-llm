@@ -148,6 +148,8 @@ def prepare(config, fraction=1.0):
     
     # Train a tokenizer (automatically saves), tokenize corpus
     tokenizer = train_tokenizer(config)
+    
+    print(tokenizer.encode(corpus[:100]).tokens)
     tokens = tokenizer.encode(corpus).ids
 
     # Split training sequences

@@ -6,6 +6,5 @@ with open('tiny-llm/PARAMS.json', 'r') as file:
     config = json.load(file)
 
 # Run preprocessing
-run_name = 'nature'
 fraction = 1.0
 data = pre.prepare(config, fraction)

@@ -1,6 +1,6 @@
 {
     "BPE_Params": {
-        "vocab_size": 128,
+        "vocab_size": 18,
         "max_token_length": 8,
         "special_tokens": ["[UNK]"]
     },
@@ -9,19 +9,19 @@
     },
     "Train_Params": {
         "epochs": 10,
-        "lr": 1e-4,
+        "lr": 1e-3,
         "batch_size": 128,
-        "device": "cpu"
+        "device": "cuda:0"
     },
     "Hyperparameters": {
-        "k": 16, 
-        "blocks": 1,
-        "heads": 1
+        "k": 32, 
+        "blocks": 2,
+        "heads": 2
     },
     "Files": {
-        "tokenizer": "tiny-llm/tokenizers/nature.json",
-        "corpus": "tiny-llm/corpuses/nature.txt",
-        "data": "tiny-llm/data/nature.pkl",
-        "model": "tiny-llm/trained_models/nature"
+        "tokenizer": "tiny-llm/tokenizers/debug.json",
+        "corpus": "tiny-llm/corpuses/debug.txt",
+        "data": "tiny-llm/data/debug.pkl",
+        "model": "tiny-llm/trained_models/debug"
     }
 }
