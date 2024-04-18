@@ -40,6 +40,15 @@ class MultiHeadAttention(nn.Module):
 
         # Apply self-attention
         w = torch.bmm(queries, keys.transpose(1,2)) / k**0.5
+
+        # Create mask for future tokens to be infinity
+        mask = torch.triu(torch.ones(t, t, device=x.device), diagonal=1).bool()
+        mask = mask.repeat(b * h, 1, 1)  # Replicate the mask for each batch and head
+
+        # Apply the mask by setting future positions to negative infinity
+        w.masked_fill_(mask, float('-inf'))
+
+        # Softmax to normalize attention scores
         w_norm = F.softmax(w, dim=2)
         y = torch.bmm(w_norm, values).view(b, h, t, k)
 
@@ -110,78 +119,6 @@ class SinusoidalPositionalEncoding(nn.Module):
         y[:,1::2] = torch.cos(pos/div)
 
         return y
-
-class GPTTokenizer:
-    def __init__(self):
-        self.encoding = None
-        self.decoding = None
-        self.vocab_size = None
-
-    def from_file(self, path):
-        """Load tokenizer encoding from a .json file."""
-        with open(path, 'r') as file:
-            self.encoding = json.load(file)
-            self.decoding = {j: i for i, j in self.encoding.items()}
-            self.vocab_size = len(self.encoding) + 1
-
-    def tokenize(self, text, replace=True):
-        text = text.lower()
-        tokens = np.array(re.findall(r"\b\w+'\w+|\w+|[^\w\s]", text))
-
-        if replace:
-            # Replace unknown tokens
-            tokens = np.array([token if token in self.encoding.keys() else '<UNK>' for token in tokens])
-        return tokens
-
-    def fit(self, corpus, unk_threshold=5, encode=False):
-        """Determine the encoding from the corpus."""
-        tokens = self.tokenize(corpus, replace=False)
-
-        unique, counts = np.unique(tokens, return_counts=True)
-        rare_tokens = unique[counts < unk_threshold]
-        
-        # Mask rare words as '<UNK>', redefine unique tokens
-        tokens = np.where(np.isin(tokens, rare_tokens), '<UNK>', tokens)
-
-        unique = np.unique(tokens)
-        
-        # Create mapping with '<UNK>' as a special case
-        mapping = {'<UNK>': 0}  # Start with '<UNK>' token
-        for i, token in enumerate(unique, start=1):
-          mapping[token] = i
-
-        print(list(mapping.items())[-10:])  # Print the last 10 mappings to check indices
-
-        # Round up vocabulary
-        vocab_size = len(mapping) + 1
-        self.encoding = mapping
-        self.decoding = {j: i for i, j in mapping.items()}
-        self.vocab_size = vocab_size
-        print(f"Tokenizer fit with vocab size {len(self.encoding)}")
-
-        # Encode after fitting if required
-        if encode:
-            return self.encode(tokens)
-
-    def encode(self, tokens):
-        """Encode a text using the tokenizer's encoding."""
-        if self.encoding is None:
-            raise ValueError("Encoding has not been set. Please load an encoding or fit the tokenizer.")
-  
-        encoded_text = [self.encoding[token] for token in tokens]
-        encoded_tensor = torch.tensor(encoded_text, dtype=torch.long)
-        return encoded_tensor
-
-    def decode(self, tokens):
-        decoded_tokens = [self.decoding[int(token)] for token in tokens]
-        decoded_text = ' '.join(decoded_tokens)
-        return decoded_text
-    
-    def save(self, path):
-        """Saves tokenizer (or rather - its mapping which characterizes the tokenizer) to provided path"""
-        with open(path, 'w') as file:
-            json.dump(self.encoding, file)
-        f"""Tokenizer succesfully saved at {path}"""
 
 class GPT(nn.Module):
     def __init__(self, k=128, heads=2, blocks=2, device=None):
@@ -267,9 +204,7 @@ class GPT(nn.Module):
             raise ValueError("No tokenizer provided. Please provide a GPTTokenizer")
 
         # Encode input, place on device
-        # tokens = self.tokenizer.tokenize(x)
         encodings = self.tokenizer.encode(x)
-        print(f"Encoded tokens by tokenizer: {encodings.tokens}")
         encodings = encodings.ids
         encodings = torch.tensor(encodings, dtype=torch.long)
         encodings = encodings.to(self.device)

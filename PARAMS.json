@@ -1,6 +1,6 @@
 {
     "BPE_Params": {
-        "vocab_size": 18,
+        "vocab_size": 512,
         "max_token_length": 8,
         "special_tokens": ["[UNK]"]
     },
@@ -10,18 +10,18 @@
     "Train_Params": {
         "epochs": 10,
         "lr": 1e-3,
-        "batch_size": 128,
-        "device": "cuda:0"
+        "batch_size": 512,
+        "device": "cpu"
     },
     "Hyperparameters": {
-        "k": 32, 
-        "blocks": 2,
-        "heads": 2
+        "k": 8, 
+        "blocks": 1,
+        "heads": 1
     },
     "Files": {
-        "tokenizer": "tiny-llm/tokenizers/debug.json",
-        "corpus": "tiny-llm/corpuses/debug.txt",
-        "data": "tiny-llm/data/debug.pkl",
-        "model": "tiny-llm/trained_models/debug"
+        "tokenizer": "tiny-llm/tokenizers/jane_austen.json",
+        "corpus": "tiny-llm/corpuses/jane_austen.txt",
+        "data": "tiny-llm/data/jane_austen.pkl",
+        "model": "tiny-llm/trained_models/jane_austen"
     }
 }

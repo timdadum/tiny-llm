@@ -34,6 +34,6 @@ device = config['Train_Params']['device']
 print(f'Training device is {device}')
 
 # Train or load earlier state
-model_name = 'nature'
+model_name = 'jane_austen'
 train.run(model, train_loader, test_loader, config, optim, loss_function, device, model_name)
 print("Finished!")
