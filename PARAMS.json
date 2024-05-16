@@ -5,18 +5,18 @@
         "special_tokens": ["[UNK]"]
     },
     "Data_Params": {
-        "sequence_length": 16
+        "sequence_length": 64
     },
     "Train_Params": {
         "epochs": 10,
-        "lr": 1e-3,
+        "lr": 2.5e-4,
         "batch_size": 512,
-        "device": "cpu"
+        "device": "cuda:0"
     },
     "Hyperparameters": {
-        "k": 8, 
-        "blocks": 1,
-        "heads": 1
+        "k": 256, 
+        "blocks": 3,
+        "heads": 6
     },
     "Files": {
         "tokenizer": "tiny-llm/tokenizers/jane_austen.json",

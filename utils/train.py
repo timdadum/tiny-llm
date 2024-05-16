@@ -59,7 +59,8 @@ def train_one_epoch(model, train_loader, optim, loss_function, device, scaler):
 
     return total_loss / len(train_loader)
 
-def train(model, train_loader, test_loader, config, optim, loss_function, device):
+
+def train(model, train_loader, test_loader, config, optim, loss_function, device, verbose=True):
     """Trains and tests the model for a given number of epochs."""
     # Initialize counters for early stopping
     counter = 0
@@ -70,6 +71,9 @@ def train(model, train_loader, test_loader, config, optim, loss_function, device
     epochs = config['Train_Params']['epochs']
 
     for epoch in range(epochs):
+        if verbose:
+          print(model.sample("Chandler: "))
+        
         train_loss = train_one_epoch(model, train_loader, optim, loss_function, device, scaler)
         print(f'[TR] Epoch {epoch + 1}/{epochs} loss: {train_loss:.4f}')
 

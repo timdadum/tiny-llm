@@ -5,6 +5,7 @@ import torch
 import unittest
 import torch.testing as torch_testing
 import json
+from utils.tokenization import post_process
 import re
 
 # NO DROPOUT AND SKIP-CONNECTIONS YET!
@@ -229,6 +230,7 @@ class GPT(nn.Module):
         
         # Unbatchify and decode
         encodings = encodings[0].tolist()
-        result = self.tokenizer.decode(encodings)
+        output = self.tokenizer.decode(encodings)
+        result = post_process(output)
 
         return result
