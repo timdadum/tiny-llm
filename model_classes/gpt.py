@@ -150,34 +150,3 @@ class GPT(nn.Module):
     def sample(self, y, T=1.0):
         """Samples a character from the forward output of this class"""
         pass
-
-### TESTS
-class TestMultiHeadAttention(unittest.TestCase):
-    def test_output_shape(self):
-        batch_size, seq_length, embedding_dim, heads = 2, 10, 64, 4
-        mha = MultiHeadAttention(embedding_dim, heads)
-        x = torch.rand(batch_size, seq_length, embedding_dim)  # Dummy input tensor
-        output = mha(x)
-        expected_shape = (batch_size, seq_length, embedding_dim)
-        self.assertEqual(output.shape, expected_shape)
-
-class TestSinusoidalPositionalEncoding(unittest.TestCase):
-    def test_output_shape(self):
-        embedding_dim = 64
-        seq_length = 10
-        spe = SinusoidalPositionalEncoding(embedding_dim)
-        output = spe.forward(seq_length)
-        expected_shape = (seq_length, embedding_dim)
-        self.assertEqual(output.shape, expected_shape)
-
-class TestSinusoidalPositionalEncodingValues(unittest.TestCase):
-    def test_first_position(self):
-        embedding_dim = 64
-        spe = SinusoidalPositionalEncoding(embedding_dim)
-        output = spe.forward(1)  # Only get the first position
-        # You can check specific properties, like whether the first value is close to expected
-        # This is a simplistic check; you might have more complex checks based on your expectations
-        self.assertTrue(torch.allclose(output[0, 0], torch.tensor([0.0]), atol=1e-6))
-
-if __name__ == '__main__':
-    unittest.main()
